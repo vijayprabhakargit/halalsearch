@@ -1,8 +1,10 @@
 "use client";
 
 import { useState } from "react";
+import CommunitySection from "./CommunitySection";
 import Disclaimer from "./Disclaimer";
 import GoogleSearchPane from "./GoogleSearchPane";
+import type { CommunitySummary, CommunityVerdict } from "@/lib/community";
 import { formatDistance } from "@/lib/distance";
 import type { VerdictState } from "@/lib/status";
 import { VERDICT_LABELS, type Place, type VerdictValue } from "@/lib/types";
@@ -18,7 +20,9 @@ interface PlaceCardProps {
   place: Place;
   state: VerdictState | undefined;
   distanceMeters: number | null;
+  community: CommunitySummary | undefined;
   onValidate: () => void;
+  onReport: (verdict: CommunityVerdict, note: string) => Promise<void>;
   onClose: () => void;
 }
 
@@ -34,7 +38,9 @@ export default function PlaceCard({
   place,
   state,
   distanceMeters,
+  community,
   onValidate,
+  onReport,
   onClose,
 }: PlaceCardProps) {
   const verdict = state?.status === "ready" ? state.verdict : null;
@@ -171,6 +177,8 @@ export default function PlaceCard({
             {error && <p className="text-xs text-red-600">{error}</p>}
           </div>
         )}
+
+        <CommunitySection place={place} summary={community} onReport={onReport} />
 
         <div className="mt-4 space-y-2 border-t border-slate-100 pt-3">
           <p className="text-xs font-semibold uppercase tracking-wide text-slate-500">

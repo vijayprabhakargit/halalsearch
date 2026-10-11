@@ -72,6 +72,8 @@ Set these in `.env.local`:
 | `NEXT_PUBLIC_MAP_STYLE_URL` | No | MapLibre style URL (defaults to OpenFreeMap "liberty") |
 | `NEXT_PUBLIC_ENABLE_GOOGLE_CSE` | No | `1` = show the embedded Google Programmable Search Engine pane (off by default) |
 | `NEXT_PUBLIC_GOOGLE_CSE_CX` | No | Google Programmable Search Engine id (`cx`) used by that pane |
+| `TURSO_DATABASE_URL` | No | Community DB URL (defaults to `file:./data/halal.db`); set to a Turso URL in production |
+| `TURSO_AUTH_TOKEN` | No | Turso auth token (only for a remote DB) |
 
 To try the UI without spending anything:
 
@@ -102,32 +104,51 @@ GEMINI_MOCK=1
 - **OSM services**: requests send a `User-Agent`; keep usage modest and respect
   each provider's usage policy.
 
+## Community layer
+
+Users can add their **own** halal assessment (Halal / Not halal / Unclear + an
+optional note) from the place card. These are stored in a lightweight libSQL
+database (`places` + `reports`) and aggregated into a summary; a community
+verdict is only shown once there are at least 3 reports. Stored community data is
+shown first, which reduces AI calls.
+
+This is **user-generated content only** — AI results are never stored (see
+`docs/DESIGN.md` for the reasoning and the legal constraints). The community
+write path is deliberately independent of the AI check.
+
+The DB defaults to a local SQLite file (`data/halal.db`, git-ignored). For
+production, set `TURSO_DATABASE_URL` (+ `TURSO_AUTH_TOKEN`) to a Turso database —
+same client, no code change.
+
 ## Project structure
 
 ```
 app/
-  page.tsx                     # map page
-  api/nearby/route.ts          # Overpass nearby search
-  api/search/route.ts          # Photon/Nominatim place search
-  api/validate/route.ts        # single-place AI check
-  api/validate/stream/route.ts # SSE batch validation
+  page.tsx                       # map page
+  api/nearby/route.ts            # Overpass nearby search
+  api/search/route.ts            # Photon/Nominatim place search (local-first)
+  api/validate/route.ts          # single-place AI check (ephemeral)
+  api/validate/stream/route.ts   # SSE batch validation
+  api/report/route.ts            # store a community assessment
+  api/places/summaries/route.ts  # batch community summaries
 components/
-  HalalSearchApp.tsx           # top-level client app
-  MapView.tsx                  # MapLibre map + markers
-  PlaceCard.tsx                # "certificate" card (verdict, sources, disclaimer)
+  HalalSearchApp.tsx             # top-level client app
+  MapView.tsx                    # MapLibre map + markers
+  PlacePin.tsx                   # teardrop pin (place type + halal status)
+  PlaceCard.tsx                  # place card (AI verdict, community, links)
+  CommunitySection.tsx           # community summary + "add your assessment"
+  GoogleSearchPane.tsx           # optional embedded PSE (flagged off)
   SearchBox.tsx, SettingsPanel.tsx, Disclaimer.tsx, useSettings.ts
 lib/
-  overpass.ts, geocode.ts      # data sources
-  gemini.ts, prompts.ts        # AI halal check
-  cache.ts, distance.ts, status.ts, types.ts, api.ts
+  overpass.ts, geocode.ts        # data sources
+  gemini.ts, prompts.ts          # AI halal check
+  db.ts, community.ts            # community DB + scoring
+  cache.ts, distance.ts, status.ts, types.ts, api.ts, clientId.ts
+scripts/
+  copy-maplibre-worker.mjs       # maplibre worker files for Next/Turbopack
+docs/
+  DESIGN.md                      # design decisions + legal constraints
 ```
-
-## Roadmap (not in v1)
-
-- Community layer: user-submitted halal confirmations/reviews (user-generated
-  only — not derived from grounded results).
-- Persistent storage and user accounts.
-- Android client (reuse the same REST/SSE API routes).
 
 ## Known limitations
 
@@ -140,3 +161,10 @@ lib/
 - Combining Gemini structured output with grounding can drop citation metadata;
   this app reads citations from the grounding metadata separately and parses the
   verdict from the model text.
+- Community reports are anonymous and unmoderated in this version; treat the
+  score as a signal, not a certification.
+
+## Roadmap
+
+- Moderation/abuse tooling and optional accounts (keep anonymous contribution).
+- Android client (reuse the same REST/SSE API routes).

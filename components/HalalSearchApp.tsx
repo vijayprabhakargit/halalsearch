@@ -6,7 +6,15 @@ import SearchBox from "./SearchBox";
 import SettingsPanel from "./SettingsPanel";
 import PlaceCard from "./PlaceCard";
 import { useSettings } from "./useSettings";
-import { fetchNearby, streamValidate, validatePlace } from "@/lib/api";
+import {
+  fetchNearby,
+  fetchSummaries,
+  streamValidate,
+  submitReport,
+  validatePlace,
+} from "@/lib/api";
+import type { CommunitySummary, CommunityVerdict } from "@/lib/community";
+import { getClientId } from "@/lib/clientId";
 import { haversineMeters } from "@/lib/distance";
 import { DEFAULT_CENTER } from "@/lib/mapStyle";
 import {
@@ -41,6 +49,9 @@ export default function HalalSearchApp() {
   const [places, setPlaces] = useState<Place[]>([]);
   const [pinned, setPinned] = useState<Place[]>([]);
   const [states, setStates] = useState<Record<string, VerdictState>>({});
+  const [communitySummaries, setCommunitySummaries] = useState<
+    Record<string, CommunitySummary>
+  >({});
   const [selected, setSelected] = useState<Place | null>(null);
 
   const [nearbyLoading, setNearbyLoading] = useState(false);
@@ -83,6 +94,17 @@ export default function HalalSearchApp() {
     );
   }, []);
 
+  const loadSummaries = useCallback(async (list: Place[]) => {
+    const ids = list.map((p) => p.placeId);
+    if (ids.length === 0) return;
+    try {
+      const summaries = await fetchSummaries(ids);
+      setCommunitySummaries((prev) => ({ ...prev, ...summaries }));
+    } catch {
+      // community data is best-effort; ignore failures
+    }
+  }, []);
+
   const loadNearby = useCallback(
     async (lat: number, lng: number) => {
       lastFetchRef.current = { lat, lng };
@@ -101,6 +123,7 @@ export default function HalalSearchApp() {
       try {
         const list = await fetchNearby(lat, lng, settings.radius);
         setPlaces(list);
+        void loadSummaries(list);
       } catch (err) {
         // Overpass is down/overloaded — fall back to the map's own tile POIs.
         setNearbyError((err as Error).message);
@@ -109,17 +132,21 @@ export default function HalalSearchApp() {
         setNearbyLoading(false);
       }
     },
-    [settings.radius],
+    [settings.radius, loadSummaries],
   );
 
-  const handleTilePlaces = useCallback((list: Place[]) => {
-    setTileCount(list.length);
-    setUsingTiles(true);
-    if (list.length > 0) {
-      setPlaces(list);
-      setNearbyError(null);
-    }
-  }, []);
+  const handleTilePlaces = useCallback(
+    (list: Place[]) => {
+      setTileCount(list.length);
+      setUsingTiles(true);
+      if (list.length > 0) {
+        setPlaces(list);
+        setNearbyError(null);
+        void loadSummaries(list);
+      }
+    },
+    [loadSummaries],
+  );
 
   useEffect(() => {
     if (!loaded || !geoResolved) return;
@@ -180,6 +207,25 @@ export default function HalalSearchApp() {
       }));
     }
   }, []);
+
+  const handleReport = useCallback(
+    async (place: Place, verdict: CommunityVerdict, note: string) => {
+      const summary = await submitReport({
+        placeId: place.placeId,
+        verdict,
+        note: note || undefined,
+        clientId: getClientId(),
+        name: place.name,
+        lat: place.lat,
+        lng: place.lng,
+        address: place.address,
+        cuisine: place.cuisine,
+        source: place.source,
+      });
+      setCommunitySummaries((prev) => ({ ...prev, [summary.placeId]: summary }));
+    },
+    [],
+  );
 
   // Optional background auto-validation of the nearest N places.
   useEffect(() => {
@@ -268,6 +314,7 @@ export default function HalalSearchApp() {
         center={center}
         places={markers}
         states={states}
+        communitySummaries={communitySummaries}
         selectedId={selected?.placeId ?? null}
         userPosition={position}
         locateSignal={locateNonce}
@@ -396,7 +443,9 @@ export default function HalalSearchApp() {
             place={selected}
             state={states[selected.placeId]}
             distanceMeters={selectedDistance}
+            community={communitySummaries[selected.placeId]}
             onValidate={() => runSingleValidation(selected)}
+            onReport={(verdict, note) => handleReport(selected, verdict, note)}
             onClose={() => setSelected(null)}
           />
         </div>

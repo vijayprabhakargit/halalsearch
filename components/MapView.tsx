@@ -11,6 +11,7 @@ import "maplibre-gl/dist/maplibre-gl.css";
 import { MAP_STYLE_URL } from "@/lib/mapStyle";
 import { markerTone, TONE_LABELS, type VerdictState } from "@/lib/status";
 import { haversineMeters } from "@/lib/distance";
+import type { CommunitySummary } from "@/lib/community";
 import type { Place } from "@/lib/types";
 import PlacePin, { cuisineCategory } from "./PlacePin";
 
@@ -18,6 +19,7 @@ interface MapViewProps {
   center: { lat: number; lng: number };
   places: Place[];
   states: Record<string, VerdictState>;
+  communitySummaries: Record<string, CommunitySummary>;
   selectedId: string | null;
   userPosition: { lat: number; lng: number } | null;
   locateSignal: number;
@@ -45,6 +47,7 @@ export default function MapView({
   center,
   places,
   states,
+  communitySummaries,
   selectedId,
   userPosition,
   locateSignal,
@@ -199,7 +202,11 @@ export default function MapView({
       )}
 
       {places.map((place) => {
-        const tone = markerTone(place, states[place.placeId]);
+        const tone = markerTone(
+          place,
+          states[place.placeId],
+          communitySummaries[place.placeId]?.verdict ?? null,
+        );
         const selected = place.placeId === selectedId;
         return (
           <Marker

@@ -1,4 +1,5 @@
-import type { Place, Verdict } from "./types";
+import { communityTone } from "./community";
+import type { Place, Verdict, VerdictValue } from "./types";
 
 export type VerdictState =
   | { status: "idle" }
@@ -38,6 +39,7 @@ export const TONE_LABELS: Record<MarkerTone, string> = {
 export function markerTone(
   place: Place,
   state: VerdictState | undefined,
+  community?: VerdictValue | null,
 ): MarkerTone {
   if (state?.status === "loading") return "loading";
   if (state?.status === "ready") {
@@ -53,6 +55,8 @@ export function markerTone(
     }
   }
   if (state?.status === "error") return "unknown";
+  const fromCommunity = communityTone(community ?? null);
+  if (fromCommunity) return fromCommunity;
   if (place.osmHalalSignal) return "osm";
   return "unknown";
 }

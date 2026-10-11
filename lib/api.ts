@@ -1,3 +1,4 @@
+import type { CommunitySummary, CommunityVerdict } from "./community";
 import type { Place, ValidateRequest, Verdict } from "./types";
 
 async function readJson<T>(res: Response): Promise<T> {
@@ -45,6 +46,42 @@ export async function validatePlace(req: ValidateRequest): Promise<Verdict> {
     body: JSON.stringify(req),
   });
   return readJson<Verdict>(res);
+}
+
+export async function fetchSummaries(
+  placeIds: string[],
+): Promise<Record<string, CommunitySummary>> {
+  if (placeIds.length === 0) return {};
+  const res = await fetch("/api/places/summaries", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ placeIds }),
+  });
+  const data = await readJson<{ summaries: Record<string, CommunitySummary> }>(res);
+  return data.summaries;
+}
+
+export interface ReportPayload {
+  placeId: string;
+  verdict: CommunityVerdict;
+  note?: string;
+  clientId?: string;
+  name?: string;
+  lat?: number;
+  lng?: number;
+  address?: string;
+  cuisine?: string;
+  source?: string;
+}
+
+export async function submitReport(payload: ReportPayload): Promise<CommunitySummary> {
+  const res = await fetch("/api/report", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(payload),
+  });
+  const data = await readJson<{ summary: CommunitySummary }>(res);
+  return data.summary;
 }
 
 export interface StreamHandlers {
