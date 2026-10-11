@@ -204,3 +204,29 @@ contribution.
 - If stored AI verdicts are ever wanted, the only clean routes are an ungrounded
   model or a search provider whose terms permit storage — a quality/legal trade
   we deliberately avoid for a halal determination.
+
+### Future (exploratory): optional Google Maps migration
+
+Feasible, but with real trade-offs. The idea: replace MapLibre + OSM with
+**Google Maps JS + Places API (New)** for richer POI coverage and a familiar map.
+It is a swap of the map component and the nearby/search data sources behind the
+existing `Place` interface; the AI and community layers are largely unaffected.
+Caveats:
+
+- **Cost:** Google Maps Platform is billed **per SKU** (Dynamic Maps loads,
+  Nearby Search, Place Details). The free tier is limited and scale costs money —
+  the opposite of the current zero-cost OSM stack.
+- **Halal data:** there is no structured "halal" field. `halal_restaurant` /
+  `vegetarian_restaurant` are place **types**, and are not reliable as Nearby
+  Search filters (Table B — mainly usable for Autocomplete `includedPrimaryTypes`).
+  Halal detection would still depend on the AI and community layers.
+- **Caching / ToS:** Maps Platform restricts storing place data — only
+  `place_id` may be stored long-term. The community DB would therefore keep
+  OSM-derived place data, or store only `place_id` + our own fields. Google
+  branding/attribution ("Powered by Google") is required, and place data may not
+  be used to build a competing database.
+- **Why it might still be worth it:** much better POI coverage than OSM in many
+  regions, and users recognise the map.
+
+Decision: keep OSM as the default; revisit Google Maps only if POI coverage
+becomes the limiting factor and the billing/ToS terms are acceptable.

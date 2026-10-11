@@ -168,3 +168,15 @@ docs/
 
 - Moderation/abuse tooling and optional accounts (keep anonymous contribution).
 - Android client (reuse the same REST/SSE API routes).
+- **Optional Google Maps migration** (exploratory): swap MapLibre/OSM for Google
+  Maps JS + Places API (New) for richer POI coverage. Feasible, but with billing
+  (per SKU), Google branding/attribution, and Maps Platform caching limits (only
+  `place_id` may be stored long-term) — so the community DB would keep
+  OSM-derived place data. See `docs/DESIGN.md` for the full analysis.
+
+## License
+
+[MIT](LICENSE).
+
+Map data © OpenStreetMap contributors (ODbL). Map tiles by
+[OpenFreeMap](https://openfreemap.org/) / OpenMapTiles.
