@@ -46,7 +46,12 @@ export default function HalalSearchApp() {
   const [nearbyLoading, setNearbyLoading] = useState(false);
   const [nearbyError, setNearbyError] = useState<string | null>(null);
   const [autoStatus, setAutoStatus] = useState<{ done: number; total: number } | null>(null);
-  const [showAll, setShowAll] = useState(false);
+  const [onlyHalalTagged, setOnlyHalalTagged] = useState(false);
+  const [viewCenter, setViewCenter] = useState(center);
+  const [locateNonce, setLocateNonce] = useState(0);
+  const [tileFallbackSignal, setTileFallbackSignal] = useState(0);
+  const [usingTiles, setUsingTiles] = useState(false);
+  const [tileCount, setTileCount] = useState(0);
 
   const statesRef = useRef<Record<string, VerdictState>>({});
   const lastFetchRef = useRef<{ lat: number; lng: number } | null>(null);
@@ -83,11 +88,23 @@ export default function HalalSearchApp() {
       lastFetchRef.current = { lat, lng };
       setNearbyLoading(true);
       setNearbyError(null);
+      setUsingTiles(false);
+      const forceTiles =
+        typeof window !== "undefined" &&
+        new URLSearchParams(window.location.search).get("tiles") === "1";
+      if (forceTiles) {
+        setNearbyError("Tile mode (debug).");
+        setTileFallbackSignal((n) => n + 1);
+        setNearbyLoading(false);
+        return;
+      }
       try {
         const list = await fetchNearby(lat, lng, settings.radius);
         setPlaces(list);
       } catch (err) {
+        // Overpass is down/overloaded — fall back to the map's own tile POIs.
         setNearbyError((err as Error).message);
+        setTileFallbackSignal((n) => n + 1);
       } finally {
         setNearbyLoading(false);
       }
@@ -95,12 +112,22 @@ export default function HalalSearchApp() {
     [settings.radius],
   );
 
+  const handleTilePlaces = useCallback((list: Place[]) => {
+    setTileCount(list.length);
+    setUsingTiles(true);
+    if (list.length > 0) {
+      setPlaces(list);
+      setNearbyError(null);
+    }
+  }, []);
+
   useEffect(() => {
     if (!loaded || !geoResolved) return;
     void loadNearby(center.lat, center.lng);
   }, [center, loaded, geoResolved, loadNearby]);
 
   const handleBoundsChanged = useCallback((next: { lat: number; lng: number }) => {
+    setViewCenter(next);
     const last = lastFetchRef.current;
     if (!last) {
       setCenter(next);
@@ -109,6 +136,27 @@ export default function HalalSearchApp() {
     if (haversineMeters(last.lat, last.lng, next.lat, next.lng) < 400) return;
     setCenter(next);
   }, []);
+
+  const handleLocate = useCallback(() => {
+    if (position) {
+      setCenter(position);
+      setLocateNonce((n) => n + 1);
+      return;
+    }
+    if (typeof navigator !== "undefined" && navigator.geolocation) {
+      navigator.geolocation.getCurrentPosition(
+        (pos) => {
+          const p = { lat: pos.coords.latitude, lng: pos.coords.longitude };
+          setPosition(p);
+          setCenter(p);
+          setGeoResolved(true);
+          setLocateNonce((n) => n + 1);
+        },
+        (err) => setGeoError(err.message),
+        { enableHighAccuracy: true, timeout: 10000 },
+      );
+    }
+  }, [position]);
 
   const handleSelect = useCallback((place: Place) => {
     setSelected(place);
@@ -193,7 +241,7 @@ export default function HalalSearchApp() {
     for (const p of pinned) byId.set(p.placeId, p);
     for (const p of places) byId.set(p.placeId, p);
     const list = [...byId.values()];
-    if (showAll) return list;
+    if (!onlyHalalTagged) return list;
     return list.filter((p) => {
       const st = states[p.placeId];
       return (
@@ -203,7 +251,10 @@ export default function HalalSearchApp() {
         st?.status === "loading"
       );
     });
-  }, [pinned, places, showAll, states]);
+  }, [pinned, places, onlyHalalTagged, states]);
+
+  const showSearchArea =
+    haversineMeters(viewCenter.lat, viewCenter.lng, center.lat, center.lng) > 200;
 
   const selectedDistance = useMemo(() => {
     if (!selected) return null;
@@ -219,12 +270,15 @@ export default function HalalSearchApp() {
         states={states}
         selectedId={selected?.placeId ?? null}
         userPosition={position}
+        locateSignal={locateNonce}
+        tileFallbackSignal={tileFallbackSignal}
         onSelect={handleSelect}
         onBoundsChanged={handleBoundsChanged}
+        onTilePlaces={handleTilePlaces}
       />
 
       <div className="pointer-events-none absolute inset-x-0 top-0 z-10 flex items-start justify-between gap-3 p-3">
-        <div className="pointer-events-auto">
+        <div className="pointer-events-auto flex flex-col gap-2">
           <SearchBox
             bias={position ?? center}
             onSelect={(place) => {
@@ -237,11 +291,40 @@ export default function HalalSearchApp() {
               setCenter({ lat: place.lat, lng: place.lng });
             }}
           />
+          <button
+            type="button"
+            onClick={handleLocate}
+            className="flex w-fit items-center gap-1.5 rounded-md border border-slate-300 bg-white px-3 py-2 text-sm font-medium text-slate-700 shadow hover:bg-slate-50"
+          >
+            <svg
+              aria-hidden="true"
+              viewBox="0 0 24 24"
+              className="h-4 w-4"
+              fill="none"
+              stroke="currentColor"
+              strokeWidth="2"
+              strokeLinecap="round"
+            >
+              <circle cx="12" cy="12" r="3" />
+              <path d="M12 2v3M12 19v3M2 12h3M19 12h3" />
+            </svg>
+            My location
+          </button>
         </div>
         <div className="pointer-events-auto">
           <SettingsPanel settings={settings} onChange={update} />
         </div>
       </div>
+
+      {showSearchArea && (
+        <button
+          type="button"
+          onClick={() => setCenter(viewCenter)}
+          className="absolute left-1/2 top-3 z-10 -translate-x-1/2 rounded-full border border-slate-300 bg-white px-4 py-2 text-sm font-medium text-slate-700 shadow-lg hover:bg-slate-50"
+        >
+          Search this area
+        </button>
+      )}
 
       <div className="pointer-events-none absolute bottom-3 left-3 z-10 flex max-w-[16rem] flex-col gap-2">
         {geoError && (
@@ -251,7 +334,20 @@ export default function HalalSearchApp() {
         )}
         {nearbyError && (
           <div className="pointer-events-auto rounded-md border border-red-300 bg-red-50 px-3 py-2 text-xs text-red-800">
-            Could not load nearby places: {nearbyError}
+            <p>Could not load nearby places: {nearbyError}</p>
+            <button
+              type="button"
+              onClick={() => void loadNearby(center.lat, center.lng)}
+              className="mt-1 rounded border border-red-300 bg-white px-2 py-0.5 font-medium text-red-700 hover:bg-red-100"
+            >
+              Retry
+            </button>
+          </div>
+        )}
+        {usingTiles && (
+          <div className="pointer-events-auto rounded-md border border-sky-300 bg-sky-50 px-3 py-2 text-xs text-sky-900">
+            OpenStreetMap (Overpass) is unavailable, so places are taken from the map
+            tiles ({tileCount} found). Tap a pin to validate it with AI.
           </div>
         )}
         {nearbyLoading && (
@@ -269,11 +365,14 @@ export default function HalalSearchApp() {
           <label className="flex items-center gap-2 font-medium text-slate-700">
             <input
               type="checkbox"
-              checked={showAll}
-              onChange={(e) => setShowAll(e.target.checked)}
+              checked={onlyHalalTagged}
+              onChange={(e) => setOnlyHalalTagged(e.target.checked)}
             />
-            Show all food places
+            Only halal/veg tagged (OSM)
           </label>
+          <p className="mt-1 text-[11px] text-slate-400">
+            Pin icon = place type · colour &amp; badge = halal status
+          </p>
           <ul className="mt-2 space-y-1">
             {LEGEND_ORDER.map((tone) => (
               <li key={tone} className="flex items-center gap-2 text-slate-600">

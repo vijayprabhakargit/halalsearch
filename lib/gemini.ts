@@ -1,4 +1,4 @@
-import { GoogleGenAI } from "@google/genai";
+import { GoogleGenAI, type GenerateContentResponse } from "@google/genai";
 import { getVerdictCache } from "./cache";
 import { buildHalalPrompt } from "./prompts";
 import type { Source, ValidateRequest, Verdict, VerdictValue } from "./types";
@@ -97,6 +97,7 @@ function mockVerdict(req: ValidateRequest): Verdict {
     summary: `Mock verdict for ${req.name} (GEMINI_MOCK=1).`,
     evidence: ["Mock mode: no external sources were queried."],
     sources: [],
+    grounded: false,
     model: "mock",
     checkedAt: new Date().toISOString(),
     cached: false,
@@ -121,32 +122,84 @@ export async function determineHalal(req: ValidateRequest): Promise<Verdict> {
 
   const ai = getClient();
   const model = DEFAULT_MODEL;
-  const response = await ai.models.generateContent({
-    model,
-    contents: buildHalalPrompt(req),
-    config: {
-      temperature: 0.2,
-      tools: [{ googleSearch: {} }],
-    },
-  });
+  const prompt = buildHalalPrompt(req);
+
+  let response: GenerateContentResponse;
+  let grounded = true;
+  try {
+    response = await generate(ai, model, prompt, true);
+  } catch (error) {
+    if (!isGroundingUnavailable(error)) throw friendlyError(error);
+    // Grounding needs billing enabled; fall back to an ungrounded answer.
+    grounded = false;
+    response = await generate(ai, model, prompt, false);
+  }
 
   const text = response.text ?? "";
   const parsed = parseModelOutput(text);
-  const sources = extractSources(
-    response.candidates?.[0]?.groundingMetadata?.groundingChunks,
-  );
+  const sources = grounded
+    ? extractSources(response.candidates?.[0]?.groundingMetadata?.groundingChunks)
+    : [];
+
+  const evidence = [...parsed.evidence];
+  if (!grounded) {
+    evidence.unshift(
+      "Live web grounding is unavailable (quota/billing), so this is the model's own knowledge without cited sources.",
+    );
+  }
 
   const verdict: Verdict = {
     placeId: req.placeId,
     verdict: parsed.verdict,
     confidence: parsed.confidence,
     summary: parsed.summary,
-    evidence: parsed.evidence,
+    evidence,
     sources,
+    grounded,
     model: response.modelVersion ?? model,
     checkedAt: new Date().toISOString(),
     cached: false,
   };
   cache.set(req.placeId, verdict);
   return verdict;
+}
+
+function generate(
+  ai: GoogleGenAI,
+  model: string,
+  prompt: string,
+  grounded: boolean,
+): Promise<GenerateContentResponse> {
+  return ai.models.generateContent({
+    model,
+    contents: prompt,
+    config: {
+      temperature: 0.2,
+      ...(grounded ? { tools: [{ googleSearch: {} }] } : {}),
+    },
+  });
+}
+
+function isGroundingUnavailable(error: unknown): boolean {
+  const e = error as { status?: number; code?: number; message?: string };
+  const status = e?.status ?? e?.code;
+  if (status === 429 || status === 403) return true;
+  const message = (e?.message ?? "").toUpperCase();
+  return (
+    message.includes("RESOURCE_EXHAUSTED") ||
+    message.includes("PERMISSION_DENIED") ||
+    message.includes("QUOTA")
+  );
+}
+
+/** Turn the SDK's JSON-in-a-string error into a readable message. */
+function friendlyError(error: unknown): Error {
+  const raw = (error as { message?: string })?.message ?? String(error);
+  try {
+    const parsed = JSON.parse(raw) as { error?: { message?: string } };
+    if (parsed?.error?.message) return new Error(parsed.error.message);
+  } catch {
+    // not JSON; use the raw message
+  }
+  return new Error(raw);
 }

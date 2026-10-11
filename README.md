@@ -28,7 +28,7 @@ sources) for any place — either on demand or in the background.
 | Concern | Choice |
 | --- | --- |
 | Map rendering | MapLibre GL + OpenStreetMap vector tiles (no API key) |
-| Nearby discovery | Overpass API (with mirror fallback) |
+| Nearby discovery | Overpass API (raced across public mirrors); falls back to the map's own vector-tile POIs if all mirrors are down |
 | Place search | Photon, falling back to Nominatim |
 | Halal determination | Gemini API **"Grounding with Google Search"** (`google_search` tool) |
 | App framework | Next.js (App Router) + TypeScript + Tailwind CSS |
@@ -70,6 +70,8 @@ Set these in `.env.local`:
 | `OVERPASS_URL` | No | Override the primary Overpass endpoint |
 | `OVERPASS_USER_AGENT` | No | Identify your app to OSM services |
 | `NEXT_PUBLIC_MAP_STYLE_URL` | No | MapLibre style URL (defaults to OpenFreeMap "liberty") |
+| `NEXT_PUBLIC_ENABLE_GOOGLE_CSE` | No | `1` = show the embedded Google Programmable Search Engine pane (off by default) |
+| `NEXT_PUBLIC_GOOGLE_CSE_CX` | No | Google Programmable Search Engine id (`cx`) used by that pane |
 
 To try the UI without spending anything:
 
@@ -131,8 +133,10 @@ lib/
 
 - OSM halal tagging coverage is uneven, so some areas show few labelled places;
   use search + AI check, or enable auto-validate, to fill the gaps.
-- Public Overpass/Nominatim/Photon endpoints can be slow or rate-limited; the
-  app retries Overpass mirrors but is not guaranteed.
+- Public Overpass endpoints are frequently overloaded; the app races several
+  mirrors, retries, caches results for 5 minutes, and — if every mirror fails —
+  falls back to food places from the map's own vector tiles (no OSM halal tags
+  in that mode, but you can still validate each place with AI).
 - Combining Gemini structured output with grounding can drop citation metadata;
   this app reads citations from the grounding metadata separately and parses the
   verdict from the model text.

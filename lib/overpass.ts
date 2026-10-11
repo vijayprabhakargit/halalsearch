@@ -1,18 +1,29 @@
+import { TtlCache } from "./cache";
 import type { OsmTags, Place } from "./types";
 
-const OVERPASS_URL =
-  process.env.OVERPASS_URL ?? "https://overpass-api.de/api/interpreter";
 const OVERPASS_USER_AGENT =
   process.env.OVERPASS_USER_AGENT ?? "HalalSearch/0.1";
 
-/** Mirrors tried in order; the public main instance is often overloaded. */
+/**
+ * Public Overpass mirrors. The main instance (and several others) are
+ * frequently overloaded or down, so nearby lookups race these concurrently and
+ * take the first non-empty success. `OVERPASS_URL`, if set, is included too.
+ *
+ * Only full-planet mirrors belong here: some public instances are regional
+ * extracts (e.g. overpass.osm.ch covers Switzerland only) and return an empty
+ * result for other areas, which would look like "no places nearby".
+ */
 const OVERPASS_ENDPOINTS = Array.from(
-  new Set([
-    OVERPASS_URL,
-    "https://overpass.kumi.systems/api/interpreter",
-    "https://overpass-api.de/api/interpreter",
-    "https://overpass.openstreetmap.ru/api/interpreter",
-  ]),
+  new Set(
+    [
+      process.env.OVERPASS_URL,
+      "https://overpass-api.de/api/interpreter",
+      "https://overpass.kumi.systems/api/interpreter",
+      "https://overpass.private.coffee/api/interpreter",
+      "https://overpass.osm.jp/api/interpreter",
+      "https://maps.mail.ru/osm/tools/overpass/api/interpreter",
+    ].filter((endpoint): endpoint is string => Boolean(endpoint)),
+  ),
 );
 
 const AMENITY_REGEX = "^(restaurant|cafe|fast_food|food_court|canteen|pub|bar)$";
@@ -139,6 +150,15 @@ function buildQuery(lat: number, lng: number, radius: number): string {
 out center tags;`;
 }
 
+/** Short-lived cache of successful nearby results (reduces Overpass load). */
+const nearbyCache = new TtlCache<Place[]>(5 * 60 * 1000);
+
+function nearbyCacheKey(lat: number, lng: number, radius: number): string {
+  return `${lat.toFixed(3)},${lng.toFixed(3)},${radius}`;
+}
+
+const delay = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
+
 /** Fetch nearby food places from Overpass and normalize them. */
 export async function getNearbyPlaces(
   lat: number,
@@ -146,12 +166,19 @@ export async function getNearbyPlaces(
   radius: number,
   limit: number,
 ): Promise<Place[]> {
-  const query = buildQuery(lat, lng, radius);
-  const body = `data=${encodeURIComponent(query)}`;
-  let lastError: Error | null = null;
+  const cacheKey = nearbyCacheKey(lat, lng, radius);
+  const cached = nearbyCache.get(cacheKey);
+  if (cached) return cached.slice(0, limit);
 
-  for (const endpoint of OVERPASS_ENDPOINTS) {
-    try {
+  const body = `data=${encodeURIComponent(buildQuery(lat, lng, radius))}`;
+  const rounds = 2;
+  let lastDetails = "";
+
+  for (let round = 0; round < rounds; round++) {
+    const controller = new AbortController();
+    let emptyResult: Place[] | null = null;
+
+    const attempt = async (endpoint: string): Promise<Place[]> => {
       const response = await fetch(endpoint, {
         method: "POST",
         headers: {
@@ -160,26 +187,55 @@ export async function getNearbyPlaces(
         },
         body,
         cache: "no-store",
-        signal: AbortSignal.timeout(30_000),
+        signal: AbortSignal.any([controller.signal, AbortSignal.timeout(20_000)]),
       });
+      const host = safeHost(endpoint);
       if (!response.ok) {
-        lastError = new Error(`Overpass request failed: ${response.status}`);
-        continue;
+        throw new Error(`${host} returned ${response.status}`);
       }
       const json = (await response.json()) as OverpassResponse;
       const places = normalizeOverpass(json);
+      if (places.length === 0) {
+        // Could be a genuinely empty area or a mirror with no data for this
+        // location — remember it, but keep waiting for a mirror with results.
+        emptyResult = [];
+        throw new Error(`${host} returned no places`);
+      }
+      return places;
+    };
+
+    try {
+      const places = await Promise.any(OVERPASS_ENDPOINTS.map(attempt));
+      controller.abort();
       places.sort(
         (a, b) =>
           distanceSquared(a.lat, a.lng, lat, lng) -
           distanceSquared(b.lat, b.lng, lat, lng),
       );
+      nearbyCache.set(cacheKey, places);
       return places.slice(0, limit);
     } catch (error) {
-      lastError = error as Error;
+      controller.abort();
+      if (emptyResult) return emptyResult;
+      lastDetails =
+        error instanceof AggregateError
+          ? error.errors.map((e) => (e as Error).message).join("; ")
+          : (error as Error).message;
+      if (round < rounds - 1) await delay(1500);
     }
   }
 
-  throw lastError ?? new Error("Overpass request failed");
+  throw new Error(
+    `OpenStreetMap (Overpass) is temporarily overloaded. Please try again shortly. [${lastDetails}]`,
+  );
+}
+
+function safeHost(endpoint: string): string {
+  try {
+    return new URL(endpoint).host;
+  } catch {
+    return endpoint;
+  }
 }
 
 function distanceSquared(

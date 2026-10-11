@@ -1,6 +1,8 @@
 "use client";
 
+import { useState } from "react";
 import Disclaimer from "./Disclaimer";
+import GoogleSearchPane from "./GoogleSearchPane";
 import { formatDistance } from "@/lib/distance";
 import type { VerdictState } from "@/lib/status";
 import { VERDICT_LABELS, type Place, type VerdictValue } from "@/lib/types";
@@ -38,6 +40,13 @@ export default function PlaceCard({
   const verdict = state?.status === "ready" ? state.verdict : null;
   const loading = state?.status === "loading";
   const error = state?.status === "error" ? state.message : null;
+  const [showGooglePane, setShowGooglePane] = useState(false);
+
+  // Google Programmable Search Engine is kept in code but hidden unless enabled.
+  const cseEnabled = process.env.NEXT_PUBLIC_ENABLE_GOOGLE_CSE === "1";
+  const cseCx = process.env.NEXT_PUBLIC_GOOGLE_CSE_CX;
+  const googleQuery = `${place.name}${place.address ? `, ${place.address}` : ""} halal`;
+  const googleUrl = `https://www.google.com/search?q=${encodeURIComponent(googleQuery)}`;
 
   return (
     <div className="flex max-h-[70vh] w-[min(92vw,26rem)] flex-col overflow-hidden rounded-xl border border-slate-200 bg-white shadow-xl">
@@ -104,6 +113,13 @@ export default function PlaceCard({
               </ul>
             )}
 
+            {!verdict.grounded && (
+              <p className="rounded border border-amber-200 bg-amber-50 px-2 py-1 text-[11px] text-amber-800">
+                Not web-verified: live search grounding is unavailable, so this answer
+                has no cited sources.
+              </p>
+            )}
+
             {verdict.sources.length > 0 && (
               <div>
                 <h3 className="text-xs font-semibold uppercase tracking-wide text-slate-500">
@@ -155,6 +171,32 @@ export default function PlaceCard({
             {error && <p className="text-xs text-red-600">{error}</p>}
           </div>
         )}
+
+        <div className="mt-4 space-y-2 border-t border-slate-100 pt-3">
+          <p className="text-xs font-semibold uppercase tracking-wide text-slate-500">
+            Check it yourself
+          </p>
+          <a
+            href={googleUrl}
+            target="_blank"
+            rel="noreferrer noopener"
+            className="block rounded-md border border-slate-300 px-3 py-2 text-center text-sm font-medium text-slate-700 hover:bg-slate-50"
+          >
+            Search Google (new tab)
+          </a>
+          {cseEnabled && cseCx && (
+            <>
+              <button
+                type="button"
+                onClick={() => setShowGooglePane((v) => !v)}
+                className="w-full rounded-md border border-slate-300 px-3 py-2 text-sm font-medium text-slate-700 hover:bg-slate-50"
+              >
+                {showGooglePane ? "Hide Google results" : "Show Google results here"}
+              </button>
+              {showGooglePane && <GoogleSearchPane query={googleQuery} cx={cseCx} />}
+            </>
+          )}
+        </div>
       </div>
 
       <div className="space-y-2 border-t border-slate-100 p-4">

@@ -36,6 +36,7 @@ describe("markerTone", () => {
           summary: "",
           evidence: [],
           sources: [],
+          grounded: true,
           model: "test",
           checkedAt: new Date().toISOString(),
           cached: false,

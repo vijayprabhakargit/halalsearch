@@ -2,6 +2,7 @@
 
 import { useEffect, useRef, useState } from "react";
 import { searchPlaces } from "@/lib/api";
+import { formatDistance, haversineMeters } from "@/lib/distance";
 import type { Place } from "@/lib/types";
 
 interface SearchBoxProps {
@@ -70,14 +71,23 @@ export default function SearchBox({ bias, onSelect }: SearchBoxProps) {
                   setResults([]);
                   setOpen(false);
                 }}
-                className="block w-full px-3 py-2 text-left hover:bg-slate-50"
+                className="flex w-full items-center justify-between gap-2 px-3 py-2 text-left hover:bg-slate-50"
               >
-                <span className="block text-sm font-medium text-slate-800">
-                  {place.name}
+                <span className="min-w-0">
+                  <span className="block truncate text-sm font-medium text-slate-800">
+                    {place.name}
+                  </span>
+                  {place.address && (
+                    <span className="block truncate text-xs text-slate-500">
+                      {place.address}
+                    </span>
+                  )}
                 </span>
-                {place.address && (
-                  <span className="block truncate text-xs text-slate-500">
-                    {place.address}
+                {bias && (
+                  <span className="shrink-0 text-xs text-slate-400">
+                    {formatDistance(
+                      haversineMeters(place.lat, place.lng, bias.lat, bias.lng),
+                    )}
                   </span>
                 )}
               </button>

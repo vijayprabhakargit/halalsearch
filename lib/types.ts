@@ -6,7 +6,7 @@ export type OsmTags = {
   [key: string]: string | undefined;
 };
 
-export type PlaceSource = "osm" | "geocode";
+export type PlaceSource = "osm" | "geocode" | "tile";
 
 export interface Place {
   placeId: string;
@@ -36,6 +36,8 @@ export interface Verdict {
   summary: string;
   evidence: string[];
   sources: Source[];
+  /** True when the answer was grounded with live Google Search results. */
+  grounded: boolean;
   model: string;
   checkedAt: string;
   cached: boolean;
