@@ -195,6 +195,12 @@ export async function getSummaries(
   return out;
 }
 
+/** Lightweight connectivity check for the health endpoint. */
+export async function pingDb(): Promise<void> {
+  await ensureSchema();
+  await getClient().execute("SELECT 1");
+}
+
 /** Test helper: close and drop the cached client so a new URL/env takes effect. */
 export function resetDbForTests(): void {
   try {

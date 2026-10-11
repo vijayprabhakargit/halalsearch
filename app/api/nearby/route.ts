@@ -1,7 +1,11 @@
 import { NextResponse, type NextRequest } from "next/server";
 import { getNearbyPlaces } from "@/lib/overpass";
+import { enforceRateLimit } from "@/lib/rateLimit";
 
 export async function GET(request: NextRequest) {
+  const limited = enforceRateLimit(request, "nearby", 60, 60_000);
+  if (limited) return limited;
+
   const sp = request.nextUrl.searchParams;
   const lat = Number(sp.get("lat"));
   const lng = Number(sp.get("lng"));

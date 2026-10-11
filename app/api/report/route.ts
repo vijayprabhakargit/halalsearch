@@ -1,6 +1,7 @@
 import { NextResponse, type NextRequest } from "next/server";
 import type { CommunityVerdict } from "@/lib/community";
 import { addReport, getSummary } from "@/lib/db";
+import { enforceRateLimit } from "@/lib/rateLimit";
 
 const VERDICTS = new Set<CommunityVerdict>(["halal", "not_halal", "unclear"]);
 const MAX_NOTE = 500;
@@ -23,6 +24,9 @@ interface ReportBody {
  * user-generated content only — never derived from the AI check.
  */
 export async function POST(request: NextRequest) {
+  const limited = enforceRateLimit(request, "report", 10, 60_000);
+  if (limited) return limited;
+
   let body: ReportBody;
   try {
     body = (await request.json()) as ReportBody;

@@ -1,5 +1,6 @@
 import type { NextRequest } from "next/server";
 import { determineHalal } from "@/lib/gemini";
+import { enforceRateLimit } from "@/lib/rateLimit";
 import type { ValidateRequest } from "@/lib/types";
 
 export const dynamic = "force-dynamic";
@@ -18,6 +19,9 @@ const MAX_CAP = 100;
  * "auto-validate nearby" mode.
  */
 export async function POST(request: NextRequest) {
+  const limited = enforceRateLimit(request, "validate-stream", 5, 60_000);
+  if (limited) return limited;
+
   let body: StreamBody;
   try {
     body = (await request.json()) as StreamBody;

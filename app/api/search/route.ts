@@ -1,7 +1,11 @@
 import { NextResponse, type NextRequest } from "next/server";
 import { searchPlaces } from "@/lib/geocode";
+import { enforceRateLimit } from "@/lib/rateLimit";
 
 export async function GET(request: NextRequest) {
+  const limited = enforceRateLimit(request, "search", 60, 60_000);
+  if (limited) return limited;
+
   const sp = request.nextUrl.searchParams;
   const query = sp.get("q")?.trim();
   if (!query) {
