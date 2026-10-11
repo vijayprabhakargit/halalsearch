@@ -5,6 +5,8 @@ OpenStreetMap, flags places already tagged halal/vegetarian/vegan, and lets you
 run an **AI-assisted halal check** (grounded in Google Search, with cited
 sources) for any place — either on demand or in the background.
 
+**Live:** https://halalsearch.vercel.app/
+
 > ⚠️ Halal status shown here is an **AI estimate** based on public sources, not a
 > religious certification. Always verify with the establishment.
 
@@ -173,6 +175,17 @@ docs/
   (per SKU), Google branding/attribution, and Maps Platform caching limits (only
   `place_id` may be stored long-term) — so the community DB would keep
   OSM-derived place data. See `docs/DESIGN.md` for the full analysis.
+
+## Deployment
+
+Live: **https://halalsearch.vercel.app/** — deployed on Vercel with a Turso
+libSQL database for the community layer.
+
+Import the repo into Vercel and set `GEMINI_API_KEY`, `TURSO_DATABASE_URL`, and
+`TURSO_AUTH_TOKEN` (plus any optional vars), enable billing on the Google Cloud
+project for cited sources, and deploy. DB tables are created automatically. Full
+step-by-step, verification checklist, and rollback are in
+[`docs/DEPLOYMENT.md`](docs/DEPLOYMENT.md).
 
 ## License
 

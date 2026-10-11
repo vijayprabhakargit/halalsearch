@@ -178,8 +178,6 @@ export default function PlaceCard({
           </div>
         )}
 
-        <CommunitySection place={place} summary={community} onReport={onReport} />
-
         <div className="mt-4 space-y-2 border-t border-slate-100 pt-3">
           <p className="text-xs font-semibold uppercase tracking-wide text-slate-500">
             Check it yourself
@@ -205,6 +203,8 @@ export default function PlaceCard({
             </>
           )}
         </div>
+
+        <CommunitySection place={place} summary={community} onReport={onReport} />
       </div>
 
       <div className="space-y-2 border-t border-slate-100 p-4">
