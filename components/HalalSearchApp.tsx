@@ -6,6 +6,7 @@ import SearchBox from "./SearchBox";
 import SettingsPanel from "./SettingsPanel";
 import PlaceCard from "./PlaceCard";
 import DonateButton from "./DonateButton";
+import HelpPanel from "./HelpPanel";
 import { useSettings } from "./useSettings";
 import {
   fetchNearby,
@@ -373,6 +374,8 @@ export default function HalalSearchApp() {
         onBoundsChanged={handleBoundsChanged}
         onMapClick={handleMapClick}
       />
+
+      <HelpPanel />
 
       <div className="pointer-events-none absolute inset-x-0 top-0 z-10 flex items-start justify-between gap-3 p-3">
         <div className="pointer-events-auto flex w-[min(68vw,30rem)] flex-col gap-2">

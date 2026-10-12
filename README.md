@@ -27,6 +27,28 @@ stored, so the directory gets more useful over time.
 - 🤖 **AI halal check** (optional, off by default): a Gemini-grounded check with
   cited sources, kept in code and enabled with `NEXT_PUBLIC_ENABLE_AI_CHECK`.
 
+## How to use
+
+1. **Allow location** — the map opens on you (blue dot) and loads nearby food
+   places.
+2. **Read the pins** — colour is the halal status (grey = not checked yet; the
+   in-app **ⓘ** button shows the full legend).
+3. **Tap a pin** — open its card: Google's label, the community's reports, and a
+   one-tap "Open in Google Maps".
+4. **Tap anywhere on the map** — even a place without a pin — to look it up and
+   check it on demand.
+5. **Search** — type a restaurant or an area in the box; results are local-first.
+6. **Pan, then "Search this area"** — load places in the new view.
+7. **Filter** — the chips (bottom-left): Halal / Veg / Community / Not validated.
+8. **Contribute** — open a place → *Add your own assessment* (Halal / Not halal /
+   Unclear). One report per person; "halal" is confirmed at ≥2 agreeing reports.
+
+The in-app **ⓘ button** (bottom-right, above the map controls) mirrors these
+instructions.
+
+> Halal status is an estimate from public data and community reports — not a
+> religious certification. Always verify with the establishment.
+
 ## How it works
 
 | Concern | Choice |
