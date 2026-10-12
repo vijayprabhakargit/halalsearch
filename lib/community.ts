@@ -28,8 +28,13 @@ function strictHalal(): boolean {
 export function deriveCommunityVerdict(
   halal: number,
   notHalal: number,
+  unclear = 0,
 ): VerdictValue | null {
   const decided = halal + notHalal;
+  // "unclear" votes count too: if they outnumber the decided reports (or are the
+  // only reports), the verdict is unclear — so a single "unclear" vote shows the
+  // amber marker rather than "not validated".
+  if (unclear > decided) return "unclear";
   if (decided === 0) return null;
   const ratio = halal / decided;
   if (ratio < 0.5) return "not_halal";
@@ -69,7 +74,7 @@ export function buildSummary(
     unclear,
     total,
     halalRatio: decided > 0 ? halal / decided : null,
-    verdict: deriveCommunityVerdict(halal, notHalal),
+    verdict: deriveCommunityVerdict(halal, notHalal, unclear),
     lastUpdated,
   };
 }

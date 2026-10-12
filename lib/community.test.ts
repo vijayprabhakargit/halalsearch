@@ -51,6 +51,22 @@ describe("communityConfidence", () => {
   });
 });
 
+describe("deriveCommunityVerdict (unclear votes)", () => {
+  it("shows unclear for a single unclear vote", () => {
+    expect(deriveCommunityVerdict(0, 0, 1)).toBe("unclear");
+  });
+
+  it("shows unclear when unclear outnumbers decided reports", () => {
+    expect(deriveCommunityVerdict(1, 0, 2)).toBe("unclear");
+    expect(deriveCommunityVerdict(1, 1, 3)).toBe("unclear");
+  });
+
+  it("still decides when halal/not-halal outnumber unclear", () => {
+    expect(deriveCommunityVerdict(2, 0, 1)).toBe("halal");
+    expect(deriveCommunityVerdict(0, 2, 1)).toBe("not_halal");
+  });
+});
+
 describe("buildSummary", () => {
   it("counts and computes halalRatio over decided reports only", () => {
     const s = buildSummary("node/1", { halal: 2, notHalal: 1, unclear: 1 }, "2026-01-01");

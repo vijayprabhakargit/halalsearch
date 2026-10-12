@@ -26,20 +26,16 @@ function buildLabel(summary: CommunitySummary): {
   text: string;
   tone: VerdictValue | null;
 } {
-  const decided = summary.halal + summary.notHalal;
-  if (decided === 0) {
-    return { text: "Only \u201Cunclear\u201D votes so far", tone: null };
-  }
   if (summary.verdict === "halal") {
     return { text: "Halal", tone: "halal" };
   }
   if (summary.verdict === "not_halal") {
     return { text: "Not halal", tone: "not_halal" };
   }
-  if (decided === 1 && summary.halal === 1) {
-    return { text: "1 confirmation (low confidence)", tone: null };
+  if (summary.verdict === "unclear") {
+    return { text: "Reported unclear", tone: "unclear" };
   }
-  return { text: "Community: mixed signals", tone: "unclear" };
+  return { text: "No reports yet", tone: null };
 }
 
 interface CommunitySectionProps {
@@ -78,11 +74,7 @@ export default function CommunitySection({
   const label = summary && summary.total > 0 ? buildLabel(summary) : null;
 
   return (
-    <div className="mt-4 space-y-2 border-t border-slate-100 pt-3">
-      <p className="text-xs font-semibold uppercase tracking-wide text-slate-500">
-        Community
-      </p>
-
+    <div className="space-y-2">
       {summary && label ? (
         <div className="space-y-1">
           {label.tone ? (
