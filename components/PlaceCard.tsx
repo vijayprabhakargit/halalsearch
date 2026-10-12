@@ -21,6 +21,7 @@ interface PlaceCardProps {
   state: VerdictState | undefined;
   distanceMeters: number | null;
   community: CommunitySummary | undefined;
+  aiEnabled: boolean;
   onValidate: () => void;
   onReport: (verdict: CommunityVerdict, note: string) => Promise<void>;
   onClose: () => void;
@@ -39,6 +40,7 @@ export default function PlaceCard({
   state,
   distanceMeters,
   community,
+  aiEnabled,
   onValidate,
   onReport,
   onClose,
@@ -91,7 +93,7 @@ export default function PlaceCard({
       </div>
 
       <div className="flex-1 overflow-y-auto p-4">
-        {verdict ? (
+        {aiEnabled && (verdict ? (
           <div className="space-y-3">
             <div className="flex items-center gap-2">
               <span
@@ -176,7 +178,7 @@ export default function PlaceCard({
             </button>
             {error && <p className="text-xs text-red-600">{error}</p>}
           </div>
-        )}
+        ))}
 
         <div className="mt-4 space-y-2 border-t border-slate-100 pt-3">
           <p className="text-xs font-semibold uppercase tracking-wide text-slate-500">

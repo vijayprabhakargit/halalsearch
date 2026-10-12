@@ -5,6 +5,7 @@ import MapView from "./MapView";
 import SearchBox from "./SearchBox";
 import SettingsPanel from "./SettingsPanel";
 import PlaceCard from "./PlaceCard";
+import DonateButton from "./DonateButton";
 import { useSettings } from "./useSettings";
 import {
   fetchNearby,
@@ -40,6 +41,7 @@ const LEGEND_ORDER: MarkerTone[] = ["halal", "likely", "not", "unclear", "osm", 
 
 export default function HalalSearchApp() {
   const { settings, update, loaded } = useSettings();
+  const aiEnabled = process.env.NEXT_PUBLIC_ENABLE_AI_CHECK === "1";
 
   const [center, setCenter] = useState<{ lat: number; lng: number }>(DEFAULT_CENTER);
   const [position, setPosition] = useState<{ lat: number; lng: number } | null>(null);
@@ -229,7 +231,7 @@ export default function HalalSearchApp() {
 
   // Optional background auto-validation of the nearest N places.
   useEffect(() => {
-    if (!loaded || !settings.autoValidate) return;
+    if (!loaded || !aiEnabled || !settings.autoValidate) return;
     const origin = position ?? center;
     const candidates = places
       .filter((p) => statesRef.current[p.placeId]?.status !== "ready")
@@ -275,6 +277,7 @@ export default function HalalSearchApp() {
     return () => controller.abort();
   }, [
     loaded,
+    aiEnabled,
     settings.autoValidate,
     settings.autoValidateCap,
     places,
@@ -358,8 +361,9 @@ export default function HalalSearchApp() {
             My location
           </button>
         </div>
-        <div className="pointer-events-auto">
-          <SettingsPanel settings={settings} onChange={update} />
+        <div className="pointer-events-auto flex items-center gap-2">
+          <DonateButton />
+          <SettingsPanel settings={settings} aiEnabled={aiEnabled} onChange={update} />
         </div>
       </div>
 
@@ -444,6 +448,7 @@ export default function HalalSearchApp() {
             state={states[selected.placeId]}
             distanceMeters={selectedDistance}
             community={communitySummaries[selected.placeId]}
+            aiEnabled={aiEnabled}
             onValidate={() => runSingleValidation(selected)}
             onReport={(verdict, note) => handleReport(selected, verdict, note)}
             onClose={() => setSelected(null)}
