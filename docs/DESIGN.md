@@ -134,11 +134,16 @@ Therefore:
 ### 4.2 What we may store
 | Data | Stored? | Basis |
 | --- | --- | --- |
-| Place/location (from OSM) | Yes | ODbL (attribution + share-alike) |
-| Community contributions (user's own halal/not/unclear + note) | Yes | User-generated content |
+| Google **`place_id`** | **Yes**, indefinitely | Maps Platform terms explicitly allow storing place IDs |
+| Google place **details** (name, address, coords, types/halal) | **No** — fetched live; in-memory/session cache only | Maps Platform caching rules; we keep **no place database** |
+| Community contributions (verdict + note) | Yes | Our own user-generated content |
 | Derived community score | Yes | Computed from our own UGC |
+| Anonymous identity (signed cookie) | Yes | No accounts; no GPS stored |
 | AI verdict from grounding (+ links) | **No** | Gemini ToS |
 | AI verdict from an ungrounded call | Possible, but avoided | Allowed, but lower reliability |
+
+The community table therefore stores **only `place_id` + our own fields** — Google's
+name/address/coordinates are never persisted.
 
 ### 4.3 The community write path must be independent
 To stay within the ToS:
@@ -150,10 +155,24 @@ To stay within the ToS:
    does not read as "confirm the AI."
 
 ### 4.4 Other services
-- OSM (Overpass/Nominatim/Photon): set a `User-Agent`, keep request rates modest.
+- **Google Maps Platform (attribution & caching):** the map must show Google's
+  logo/attribution (it does); only `place_id` may be stored long-term — all other
+  place data is cache-only (≤30 days) and must not be used to build a place
+  database (we don't). Reading a POI's `placeId` on click is standard Maps JS use.
 - Outbound Google Maps links and the optional Google Programmable Search Engine
-  embed are permitted; iframing `google.com/search` is not (blocked by
+  embed are permitted; **iframing `google.com/search` is not** (blocked by
   `X-Frame-Options`/CSP and against ToS).
+- **OSM (Overpass/Nominatim/Photon)** — kept in the repo but **not active**. If
+  re-enabled: set a `User-Agent`, keep rates modest (ODbL: attribution + share-alike).
+- **No scraping** anywhere. The "Google AI Mode" idea was implemented as Gemini
+  grounding (the sanctioned API), not by scraping search pages.
+
+### 4.5 Current position
+Compliant: we persist **only `place_id` + our own community fields**; Google place
+details and Gemini grounded results are never stored (in-memory / browser-session
+caches only). Remaining item before a public launch: a **counsel review** (or ask
+Google for explicit permission). Monetization (AdSense) is **parked** — it needs
+real content pages and approval. This is our reading, not legal advice.
 
 ---
 
