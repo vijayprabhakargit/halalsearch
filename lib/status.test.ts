@@ -7,44 +7,29 @@ const basePlace: Place = {
   name: "Test",
   lat: 0,
   lng: 0,
-  osmTags: {},
-  osmHalalSignal: false,
   source: "osm",
+  halalTagged: false,
+  vegetarianTagged: false,
+  veganTagged: false,
 };
 
 describe("markerTone", () => {
-  it("returns unknown when no state and no OSM signal", () => {
+  it("returns unknown when no state and no label", () => {
     expect(markerTone(basePlace, undefined)).toBe("unknown");
   });
 
-  it("returns osm when OSM signals halal but not yet validated", () => {
-    expect(markerTone({ ...basePlace, osmHalalSignal: true }, undefined)).toBe("osm");
+  it("returns tagged when the source labels it halal/veg but not validated", () => {
+    expect(markerTone({ ...basePlace, halalTagged: true }, undefined)).toBe("tagged");
+    expect(markerTone({ ...basePlace, vegetarianTagged: true }, undefined)).toBe("tagged");
   });
 
   it("returns loading when validating", () => {
     expect(markerTone(basePlace, { status: "loading" })).toBe("loading");
   });
 
-  it("maps verdicts to tones", () => {
-    const make = (verdict: "halal" | "likely_halal" | "not_halal" | "unclear") =>
-      markerTone(basePlace, {
-        status: "ready",
-        verdict: {
-          placeId: basePlace.placeId,
-          verdict,
-          confidence: 0.5,
-          summary: "",
-          evidence: [],
-          sources: [],
-          grounded: true,
-          model: "test",
-          checkedAt: new Date().toISOString(),
-          cached: false,
-        },
-      });
-    expect(make("halal")).toBe("halal");
-    expect(make("likely_halal")).toBe("likely");
-    expect(make("not_halal")).toBe("not");
-    expect(make("unclear")).toBe("unclear");
+  it("maps community verdicts to tones", () => {
+    expect(markerTone(basePlace, undefined, "halal")).toBe("halal");
+    expect(markerTone(basePlace, undefined, "not_halal")).toBe("not");
+    expect(markerTone(basePlace, undefined, "unclear")).toBe("unclear");
   });
 });

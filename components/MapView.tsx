@@ -117,9 +117,10 @@ export default function MapView({
             lat,
             lng,
             cuisine: typeof props.subclass === "string" ? props.subclass : undefined,
-            osmTags: {},
-            osmHalalSignal: false,
             source: "tile",
+            halalTagged: false,
+            vegetarianTagged: false,
+            veganTagged: false,
           });
         }
       };

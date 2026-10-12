@@ -24,7 +24,7 @@ import {
   type MarkerTone,
   type VerdictState,
 } from "@/lib/status";
-import type { Place, ValidateRequest } from "@/lib/types";
+import { hasHalalSignal, type Place, type ValidateRequest } from "@/lib/types";
 
 function toRequest(place: Place): ValidateRequest {
   return {
@@ -37,7 +37,7 @@ function toRequest(place: Place): ValidateRequest {
   };
 }
 
-const LEGEND_ORDER: MarkerTone[] = ["halal", "likely", "not", "unclear", "osm", "unknown"];
+const LEGEND_ORDER: MarkerTone[] = ["halal", "likely", "not", "unclear", "tagged", "unknown"];
 
 export default function HalalSearchApp() {
   const { settings, update, loaded } = useSettings();
@@ -294,7 +294,7 @@ export default function HalalSearchApp() {
     return list.filter((p) => {
       const st = states[p.placeId];
       return (
-        p.osmHalalSignal ||
+        hasHalalSignal(p) ||
         p.source === "geocode" ||
         st?.status === "ready" ||
         st?.status === "loading"

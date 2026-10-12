@@ -28,41 +28,6 @@ const OVERPASS_ENDPOINTS = Array.from(
 
 const AMENITY_REGEX = "^(restaurant|cafe|fast_food|food_court|canteen|pub|bar)$";
 
-/**
- * Cuisines that frequently (but not always) indicate halal-friendly food.
- * Used only as a weak positive signal; the AI check is authoritative.
- */
-const HALAL_ASSOCIATED_CUISINES = [
-  "kebab",
-  "doner",
-  "shawarma",
-  "falafel",
-  "turkish",
-  "lebanese",
-  "persian",
-  "iranian",
-  "arab",
-  "yemeni",
-  "syrian",
-  "iraqi",
-  "egyptian",
-  "moroccan",
-  "tunisian",
-  "algerian",
-  "middle_eastern",
-  "mediterranean",
-  "pakistani",
-  "bangladeshi",
-  "indian",
-  "afghan",
-  "indonesian",
-  "malaysian",
-  "somali",
-  "sudanese",
-  "uzbek",
-  "halal",
-];
-
 interface OverpassElement {
   type: string;
   id: number;
@@ -80,20 +45,6 @@ function isAffirmative(value?: string): boolean {
   if (!value) return false;
   const v = value.trim().toLowerCase();
   return v === "yes" || v === "only";
-}
-
-function cuisineMatchesHalal(cuisine?: string): boolean {
-  if (!cuisine) return false;
-  const normalized = cuisine.toLowerCase();
-  return HALAL_ASSOCIATED_CUISINES.some((c) => normalized.includes(c));
-}
-
-/** Derive whether OSM tags already signal halal/vegetarian/vegan-friendly food. */
-export function deriveHalalSignal(tags: OsmTags): boolean {
-  if (isAffirmative(tags["diet:halal"])) return true;
-  if (isAffirmative(tags["diet:vegetarian"])) return true;
-  if (isAffirmative(tags["diet:vegan"])) return true;
-  return cuisineMatchesHalal(tags.cuisine);
 }
 
 function buildAddress(tags: Record<string, string>): string | undefined {
@@ -134,9 +85,11 @@ export function normalizeOverpass(json: OverpassResponse): Place[] {
       lat,
       lng,
       cuisine: tags.cuisine,
-      osmTags,
-      osmHalalSignal: deriveHalalSignal(osmTags),
       source: "osm",
+      halalTagged: isAffirmative(tags["diet:halal"]),
+      vegetarianTagged: isAffirmative(tags["diet:vegetarian"]),
+      veganTagged: isAffirmative(tags["diet:vegan"]),
+      osmTags,
     });
   }
   return places;

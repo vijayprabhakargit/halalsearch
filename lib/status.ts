@@ -1,5 +1,10 @@
 import { communityTone } from "./community";
-import type { Place, Verdict, VerdictValue } from "./types";
+import {
+  hasHalalSignal,
+  type Place,
+  type Verdict,
+  type VerdictValue,
+} from "./types";
 
 export type VerdictState =
   | { status: "idle" }
@@ -12,7 +17,7 @@ export type MarkerTone =
   | "likely"
   | "not"
   | "unclear"
-  | "osm"
+  | "tagged"
   | "loading"
   | "unknown";
 
@@ -21,18 +26,18 @@ export const TONE_COLORS: Record<MarkerTone, string> = {
   likely: "#22c55e",
   not: "#dc2626",
   unclear: "#d97706",
-  osm: "#0d9488",
+  tagged: "#0d9488",
   loading: "#64748b",
   unknown: "#94a3b8",
 };
 
 export const TONE_LABELS: Record<MarkerTone, string> = {
-  halal: "Halal (AI)",
-  likely: "Likely halal (AI)",
-  not: "Not halal (AI)",
-  unclear: "Unclear (AI)",
-  osm: "Halal/veg tagged (OSM)",
-  loading: "Validating…",
+  halal: "Halal",
+  likely: "Likely halal",
+  not: "Not halal",
+  unclear: "Unclear",
+  tagged: "Halal/veg labelled",
+  loading: "Loading…",
   unknown: "Not validated",
 };
 
@@ -57,6 +62,6 @@ export function markerTone(
   if (state?.status === "error") return "unknown";
   const fromCommunity = communityTone(community ?? null);
   if (fromCommunity) return fromCommunity;
-  if (place.osmHalalSignal) return "osm";
+  if (hasHalalSignal(place)) return "tagged";
   return "unknown";
 }

@@ -1,5 +1,5 @@
 import { NextResponse, type NextRequest } from "next/server";
-import { searchPlaces } from "@/lib/geocode";
+import { searchPlaces } from "@/lib/providers";
 import { enforceRateLimit } from "@/lib/rateLimit";
 
 export async function GET(request: NextRequest) {

@@ -80,6 +80,8 @@ Set these in `.env.local`:
 | `NEXT_PUBLIC_DONATE_URL` | No | Donation link shown next to Settings (hidden if unset) |
 | `TURSO_DATABASE_URL` | No | Community DB URL (defaults to `file:./data/halal.db`); set to a Turso URL in production |
 | `TURSO_AUTH_TOKEN` | No | Turso auth token (only for a remote DB) |
+| `NEXT_PUBLIC_GOOGLE_MAPS_API_KEY` | No (Google Maps migration) | Browser key, HTTP-referrer restricted |
+| `GOOGLE_MAPS_API_KEY` | No (Google Maps migration) | Server key for Places API (New) |
 
 To try the AI check without spending anything (it is off by default):
 

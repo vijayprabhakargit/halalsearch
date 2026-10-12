@@ -88,9 +88,10 @@ async function searchPhoton(
       address: addressParts.length ? addressParts.join(", ") : undefined,
       lat: latCoord,
       lng: lngCoord,
-      osmTags: {},
-      osmHalalSignal: false,
       source: "geocode",
+      halalTagged: false,
+      vegetarianTagged: false,
+      veganTagged: false,
     });
   }
   return places;
@@ -131,9 +132,10 @@ async function searchNominatim(
       address: r.display_name,
       lat: latNum,
       lng: lngNum,
-      osmTags: {},
-      osmHalalSignal: false,
       source: "geocode",
+      halalTagged: false,
+      vegetarianTagged: false,
+      veganTagged: false,
     });
   }
   return places;

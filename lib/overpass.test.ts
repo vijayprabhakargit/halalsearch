@@ -1,33 +1,8 @@
 import { describe, expect, it } from "vitest";
-import { deriveHalalSignal, normalizeOverpass } from "./overpass";
-
-describe("deriveHalalSignal", () => {
-  it("is true for diet:halal=yes", () => {
-    expect(deriveHalalSignal({ "diet:halal": "yes" })).toBe(true);
-  });
-
-  it("is true for diet:halal=only", () => {
-    expect(deriveHalalSignal({ "diet:halal": "only" })).toBe(true);
-  });
-
-  it("is true for vegetarian and vegan", () => {
-    expect(deriveHalalSignal({ "diet:vegetarian": "yes" })).toBe(true);
-    expect(deriveHalalSignal({ "diet:vegan": "yes" })).toBe(true);
-  });
-
-  it("is true for halal-associated cuisines", () => {
-    expect(deriveHalalSignal({ cuisine: "kebab" })).toBe(true);
-    expect(deriveHalalSignal({ cuisine: "turkish" })).toBe(true);
-  });
-
-  it("is false for unrelated tags", () => {
-    expect(deriveHalalSignal({ cuisine: "italian" })).toBe(false);
-    expect(deriveHalalSignal({})).toBe(false);
-  });
-});
+import { normalizeOverpass } from "./overpass";
 
 describe("normalizeOverpass", () => {
-  it("normalizes named nodes and drops unnamed ones", () => {
+  it("normalizes named nodes, drops unnamed ones, and maps tags", () => {
     const places = normalizeOverpass({
       elements: [
         {
@@ -46,9 +21,28 @@ describe("normalizeOverpass", () => {
       name: "Kebab House",
       lat: 10,
       lng: 20,
-      osmHalalSignal: true,
       source: "osm",
+      halalTagged: true,
+      vegetarianTagged: false,
+      veganTagged: false,
     });
+  });
+
+  it("maps vegetarian and vegan tags", () => {
+    const places = normalizeOverpass({
+      elements: [
+        {
+          type: "node",
+          id: 3,
+          lat: 1,
+          lon: 1,
+          tags: { name: "Veg Place", "diet:vegetarian": "yes", "diet:vegan": "only" },
+        },
+      ],
+    });
+    expect(places[0].vegetarianTagged).toBe(true);
+    expect(places[0].veganTagged).toBe(true);
+    expect(places[0].halalTagged).toBe(false);
   });
 
   it("uses the center coordinates for ways", () => {

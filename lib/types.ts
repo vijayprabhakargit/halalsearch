@@ -6,7 +6,7 @@ export type OsmTags = {
   [key: string]: string | undefined;
 };
 
-export type PlaceSource = "osm" | "geocode" | "tile";
+export type PlaceSource = "osm" | "geocode" | "tile" | "google";
 
 export interface Place {
   placeId: string;
@@ -15,10 +15,20 @@ export interface Place {
   lat: number;
   lng: number;
   cuisine?: string;
-  osmTags: OsmTags;
-  /** True when OSM tags already indicate halal/vegetarian/vegan-friendly. */
-  osmHalalSignal: boolean;
   source: PlaceSource;
+  /** Data-source label: the place is tagged halal (e.g. Google `halal_restaurant`). */
+  halalTagged: boolean;
+  /** Data-source label: tagged vegetarian. */
+  vegetarianTagged: boolean;
+  /** Data-source label: tagged vegan. */
+  veganTagged: boolean;
+  /** Raw OSM tags (OSM provider only). */
+  osmTags?: OsmTags;
+}
+
+/** True when the data source labels the place halal or vegetarian/vegan. */
+export function hasHalalSignal(place: Place): boolean {
+  return place.halalTagged || place.vegetarianTagged || place.veganTagged;
 }
 
 export type VerdictValue = "halal" | "likely_halal" | "not_halal" | "unclear";

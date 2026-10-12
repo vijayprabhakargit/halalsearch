@@ -27,6 +27,10 @@ interface PlaceCardProps {
   onClose: () => void;
 }
 
+function dataSourceLabel(place: Place): string {
+  return place.source === "google" ? "Google Maps" : "the map data";
+}
+
 function googleMapsUrl(place: Place): string {
   const query =
     place.address && place.address.length > 0
@@ -72,9 +76,14 @@ export default function PlaceCard({
                 {place.cuisine}
               </span>
             )}
-            {place.osmHalalSignal && (
+            {place.halalTagged && (
               <span className="rounded bg-teal-100 px-1.5 py-0.5 text-teal-700">
-                Halal/veg tagged in OSM
+                Halal — labelled on {dataSourceLabel(place)}
+              </span>
+            )}
+            {!place.halalTagged && (place.vegetarianTagged || place.veganTagged) && (
+              <span className="rounded bg-teal-100 px-1.5 py-0.5 text-teal-700">
+                Halal-friendly (vegetarian)
               </span>
             )}
             {distanceMeters != null && (
