@@ -65,10 +65,11 @@ storable long-term). The OSM provider (Overpass + Photon) is kept in the repo,
 unused, behind `lib/providers/index.ts`.
 
 ### 3.3 Cost control is user-driven, not automatic
-When enabled, the AI check is billed per executed search (5,000 free/month, then
-~$14/1,000). Decision: the AI check is **off by default** and, when on,
-auto-validate is off, capped (default 25), and cached in memory. Map data comes
-from Google Places (see 3.2).
+The AI check is billed per executed search (5,000 free/month, then ~$14/1,000).
+Decision: the AI check is **on by default but strictly on-demand** — it runs only
+when a user opens a place and taps "Validate with AI" (no automatic invocation;
+auto-validate was removed). Hide it entirely with `NEXT_PUBLIC_ENABLE_AI_CHECK=0`.
+Map data comes from Google Places (see 3.2).
 
 ### 3.4 Verdict model: evidence + nuance + disclaimer
 Halal is a religious/dietary requirement; a wrong "halal" is harmful. The AI

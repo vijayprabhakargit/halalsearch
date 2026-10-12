@@ -24,10 +24,10 @@ stored, so the directory gets more useful over time.
 - 🔎 **Search**: find a restaurant/address by name; results are local-first.
 - 🗺️ **Directions**: one-click "Open in Google Maps" deep link.
 - 🧭 **Distances** computed client-side.
-- 🤖 **AI halal check** (optional, off by default): a Gemini-grounded check with
-  cited sources. Strictly **on-demand** — it runs only when you open a place and
-  tap "Validate with AI" (nothing is invoked automatically). Enable with
-  `NEXT_PUBLIC_ENABLE_AI_CHECK=1`.
+- 🤖 **AI halal check** (on by default): a Gemini-grounded check with cited
+  sources. Strictly **on-demand** — it runs only when you open a place and tap
+  "Validate with AI" (nothing is invoked automatically). Requires `GEMINI_API_KEY`;
+  hide it with `NEXT_PUBLIC_ENABLE_AI_CHECK=0`.
 
 ## How to use
 
@@ -96,7 +96,7 @@ Set these in `.env.local`:
 
 | Variable | Required | Description |
 | --- | --- | --- |
-| `NEXT_PUBLIC_ENABLE_AI_CHECK` | No | `1` = show the on-demand AI halal check (off by default; nothing runs automatically) |
+| `NEXT_PUBLIC_ENABLE_AI_CHECK` | No | On-demand AI halal check is **on by default**; set `0` to hide it (nothing runs automatically) |
 | `GEMINI_API_KEY` | No (only if the AI check is enabled) | From https://aistudio.google.com/apikey |
 | `GEMINI_MODEL` | No | Override the model (defaults to a Flash-tier model) |
 | `GEMINI_MOCK` | No | `1` = return canned verdicts, no Gemini calls/billing (for UI dev & tests) |
@@ -229,8 +229,9 @@ libSQL database for the community layer.
 Import the repo into Vercel and set `TURSO_DATABASE_URL`, `TURSO_AUTH_TOKEN`,
 `GOOGLE_MAPS_API_KEY`, and `NEXT_PUBLIC_GOOGLE_MAPS_API_KEY` (plus
 `NEXT_PUBLIC_GOOGLE_MAPS_MAP_ID`), then deploy. DB tables are created
-automatically. Add `GEMINI_API_KEY` + `NEXT_PUBLIC_ENABLE_AI_CHECK=1` only if you
-want the AI check. Full step-by-step, verification checklist, and rollback are in
+automatically. The on-demand AI check is on by default — add `GEMINI_API_KEY` to
+use it (or set `NEXT_PUBLIC_ENABLE_AI_CHECK=0` to hide it). Full step-by-step,
+verification checklist, and rollback are in
 [`docs/DEPLOYMENT.md`](docs/DEPLOYMENT.md).
 
 ## License

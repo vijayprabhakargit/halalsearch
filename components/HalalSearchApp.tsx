@@ -61,7 +61,7 @@ function mergeSummaries(
 
 export default function HalalSearchApp() {
   const { settings, update, loaded } = useSettings();
-  const aiEnabled = process.env.NEXT_PUBLIC_ENABLE_AI_CHECK === "1";
+  const aiEnabled = process.env.NEXT_PUBLIC_ENABLE_AI_CHECK !== "0";
 
   const [center, setCenter] = useState<{ lat: number; lng: number }>(DEFAULT_CENTER);
   const [position, setPosition] = useState<{ lat: number; lng: number } | null>(null);
