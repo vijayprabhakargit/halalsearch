@@ -16,14 +16,15 @@ export interface CommunitySummary {
 }
 
 /**
- * Derive a verdict from decided (halal/not-halal) report counts.
- *
- * Asymmetric on purpose:
- * - a wrong "halal" is harmful, so upgrading to `halal` needs corroboration:
- *   at least two contributors AND a >=0.66 majority. A lone vote stays
- *   "unclear" (shown in the UI as "low confidence").
- * - downgrading is fast: a clear negative majority (ratio < 0.5) wins at once.
+ * When COMMUNITY_STRICT_HALAL=1, a `halal` verdict needs corroboration: at least
+ * two decided reports and a >=0.66 majority. Off by default (the app is new and
+ * accumulating data), where a simple majority — even one `halal` vote — shows
+ * halal. Downgrades are always fast (a clear negative majority wins at once).
  */
+function strictHalal(): boolean {
+  return process.env.COMMUNITY_STRICT_HALAL === "1";
+}
+
 export function deriveCommunityVerdict(
   halal: number,
   notHalal: number,
@@ -32,7 +33,11 @@ export function deriveCommunityVerdict(
   if (decided === 0) return null;
   const ratio = halal / decided;
   if (ratio < 0.5) return "not_halal";
-  if (decided >= 2 && ratio >= 0.66) return "halal";
+  if (strictHalal()) {
+    if (decided >= 2 && ratio >= 0.66) return "halal";
+  } else if (ratio > 0.5) {
+    return "halal";
+  }
   return "unclear";
 }
 

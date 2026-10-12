@@ -158,9 +158,11 @@ Replace the raw ratio with a confidence-aware score:
   + upsert (re-voting updates your existing report).
 - **#2 Per-place rate cap** — max 8 fresh reports per place per hour (DB-counted,
   so it holds across instances).
-- **#3 Asymmetric display threshold** — a lone vote reads as
-  "1 confirmation (low confidence)"; a green *halal* tone needs ≥2 contributors
-  and ≥0.66; downgrades (`not_halal`) apply immediately on a negative majority.
+- **#3 Asymmetric verdict** — downgrades (`not_halal`) apply immediately on a
+  negative majority. Upgrading to *halal*: **a simple majority by default** (a
+  single halal vote is enough while the app is new and accumulating data); the
+  stricter rule (**≥2 contributors and ≥0.66**) is behind
+  `COMMUNITY_STRICT_HALAL=1`.
 - **#4 Server-issued signed identity** — HMAC-signed, HttpOnly `hs_id` cookie
   (`IDENTITY_SECRET`, falling back to `TURSO_AUTH_TOKEN`), minted on first report.
 

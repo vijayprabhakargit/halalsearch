@@ -13,7 +13,6 @@ import {
   fetchPlaceAtPoint,
   fetchPlaceDetails,
   fetchSummaries,
-  streamValidate,
   submitReport,
   validatePlace,
 } from "@/lib/api";
@@ -43,6 +42,23 @@ const FILTERS: { key: FilterKey; label: string; color: string }[] = [
   { key: "unknown", label: "Not validated", color: TONE_COLORS.unknown },
 ];
 
+/** Keep the newer summary per place (a stale fetch must not overwrite a fresh report). */
+function mergeSummaries(
+  prev: Record<string, CommunitySummary>,
+  incoming: CommunitySummary | CommunitySummary[],
+): Record<string, CommunitySummary> {
+  const next = { ...prev };
+  const list = Array.isArray(incoming) ? incoming : [incoming];
+  for (const summary of list) {
+    const existing = next[summary.placeId];
+    if (existing && (existing.lastUpdated ?? "") > (summary.lastUpdated ?? "")) {
+      continue;
+    }
+    next[summary.placeId] = summary;
+  }
+  return next;
+}
+
 export default function HalalSearchApp() {
   const { settings, update, loaded } = useSettings();
   const aiEnabled = process.env.NEXT_PUBLIC_ENABLE_AI_CHECK === "1";
@@ -62,7 +78,6 @@ export default function HalalSearchApp() {
 
   const [nearbyLoading, setNearbyLoading] = useState(false);
   const [nearbyError, setNearbyError] = useState<string | null>(null);
-  const [autoStatus, setAutoStatus] = useState<{ done: number; total: number } | null>(null);
   const [filters, setFilters] = useState({
     halal: true,
     veg: true,
@@ -80,13 +95,7 @@ export default function HalalSearchApp() {
     setFocus((prev) => ({ lat, lng, nonce: (prev?.nonce ?? 0) + 1 }));
   }, []);
 
-  const statesRef = useRef<Record<string, VerdictState>>({});
   const lastFetchRef = useRef<{ lat: number; lng: number } | null>(null);
-  const autoRanRef = useRef<string>("");
-
-  useEffect(() => {
-    statesRef.current = states;
-  }, [states]);
 
   // Ask for the browser location once.
   useEffect(() => {
@@ -116,7 +125,7 @@ export default function HalalSearchApp() {
     if (ids.length === 0) return;
     try {
       const summaries = await fetchSummaries(ids);
-      setCommunitySummaries((prev) => ({ ...prev, ...summaries }));
+      setCommunitySummaries((prev) => mergeSummaries(prev, Object.values(summaries)));
     } catch {
       // community data is best-effort; ignore failures
     }
@@ -190,7 +199,7 @@ export default function HalalSearchApp() {
         );
       }
       if (summary) {
-        setCommunitySummaries((prev) => ({ ...prev, [summary.placeId]: summary }));
+        setCommunitySummaries((prev) => mergeSummaries(prev, summary));
       }
     } catch {
       // details are best-effort
@@ -237,66 +246,10 @@ export default function HalalSearchApp() {
         cuisine: place.cuisine,
         source: place.source,
       });
-      setCommunitySummaries((prev) => ({ ...prev, [summary.placeId]: summary }));
+      setCommunitySummaries((prev) => mergeSummaries(prev, summary));
     },
     [],
   );
-
-  // Optional background auto-validation of the nearest N places.
-  useEffect(() => {
-    if (!loaded || !aiEnabled || !settings.autoValidate) return;
-    const origin = position ?? center;
-    const candidates = places
-      .filter((p) => statesRef.current[p.placeId]?.status !== "ready")
-      .map((p) => ({ place: p, d: haversineMeters(origin.lat, origin.lng, p.lat, p.lng) }))
-      .sort((a, b) => a.d - b.d)
-      .slice(0, settings.autoValidateCap)
-      .map((x) => x.place);
-    if (!candidates.length) return;
-
-    const key = candidates.map((c) => c.placeId).join(",");
-    if (autoRanRef.current === key) return;
-    autoRanRef.current = key;
-
-    const controller = new AbortController();
-    setStates((prev) => {
-      const next = { ...prev };
-      for (const c of candidates) {
-        if (next[c.placeId]?.status !== "ready") next[c.placeId] = { status: "loading" };
-      }
-      return next;
-    });
-
-    void streamValidate(
-      candidates.map(toRequest),
-      settings.autoValidateCap,
-      {
-        onVerdict: (verdict) =>
-          setStates((prev) => ({
-            ...prev,
-            [verdict.placeId]: { status: "ready", verdict },
-          })),
-        onError: (placeId, message) =>
-          setStates((prev) => ({ ...prev, [placeId]: { status: "error", message } })),
-        onProgress: (done, total) => setAutoStatus({ done, total }),
-        onDone: () => setAutoStatus(null),
-      },
-      controller.signal,
-    ).catch((err) => {
-      setAutoStatus(null);
-      if ((err as Error).name !== "AbortError") setNearbyError((err as Error).message);
-    });
-
-    return () => controller.abort();
-  }, [
-    loaded,
-    aiEnabled,
-    settings.autoValidate,
-    settings.autoValidateCap,
-    places,
-    position,
-    center,
-  ]);
 
   const markers = useMemo(() => {
     const byId = new Map<string, Place>();
@@ -345,10 +298,7 @@ export default function HalalSearchApp() {
         );
         setSelected(place);
         if (summary) {
-          setCommunitySummaries((prev) => ({
-            ...prev,
-            [summary.placeId]: summary,
-          }));
+          setCommunitySummaries((prev) => mergeSummaries(prev, summary));
         }
       } catch {
         // best-effort
@@ -427,7 +377,7 @@ export default function HalalSearchApp() {
         </div>
         <div className="pointer-events-auto flex items-center gap-2">
           <DonateButton />
-          <SettingsPanel settings={settings} aiEnabled={aiEnabled} onChange={update} />
+          <SettingsPanel settings={settings} onChange={update} />
         </div>
       </div>
 
@@ -465,11 +415,6 @@ export default function HalalSearchApp() {
         {nearbyLoading && (
           <div className="pointer-events-auto rounded-md bg-white/90 px-3 py-1.5 text-xs text-slate-600 shadow">
             Loading nearby places…
-          </div>
-        )}
-        {autoStatus && (
-          <div className="pointer-events-auto rounded-md bg-white/90 px-3 py-1.5 text-xs text-slate-600 shadow">
-            Validating {autoStatus.done}/{autoStatus.total}…
           </div>
         )}
 
@@ -514,6 +459,7 @@ export default function HalalSearchApp() {
       {selected && (
         <div className="absolute bottom-3 right-3 z-10">
           <PlaceCard
+            key={selected.placeId}
             place={selected}
             state={states[selected.placeId]}
             distanceMeters={selectedDistance}

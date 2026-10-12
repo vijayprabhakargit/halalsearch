@@ -1,13 +1,13 @@
-import { describe, expect, it } from "vitest";
+import { afterAll, describe, expect, it } from "vitest";
 import { buildSummary, communityConfidence, communityTone, deriveCommunityVerdict } from "./community";
 
-describe("deriveCommunityVerdict", () => {
+describe("deriveCommunityVerdict (default: simple majority)", () => {
   it("returns null with no decided reports", () => {
     expect(deriveCommunityVerdict(0, 0)).toBeNull();
   });
 
-  it("does not confirm halal from a single vote", () => {
-    expect(deriveCommunityVerdict(1, 0)).toBe("unclear");
+  it("confirms halal from a single vote", () => {
+    expect(deriveCommunityVerdict(1, 0)).toBe("halal");
   });
 
   it("downgrades fast on a clear negative majority", () => {
@@ -15,15 +15,31 @@ describe("deriveCommunityVerdict", () => {
     expect(deriveCommunityVerdict(1, 2)).toBe("not_halal");
   });
 
-  it("confirms halal with >=2 contributors and a strong majority", () => {
+  it("confirms halal on a simple majority", () => {
     expect(deriveCommunityVerdict(2, 0)).toBe("halal");
     expect(deriveCommunityVerdict(2, 1)).toBe("halal");
-    expect(deriveCommunityVerdict(5, 1)).toBe("halal");
+    expect(deriveCommunityVerdict(3, 2)).toBe("halal");
   });
 
   it("returns unclear on a tie", () => {
     expect(deriveCommunityVerdict(1, 1)).toBe("unclear");
     expect(deriveCommunityVerdict(2, 2)).toBe("unclear");
+  });
+});
+
+describe("deriveCommunityVerdict (COMMUNITY_STRICT_HALAL=1)", () => {
+  const prev = process.env.COMMUNITY_STRICT_HALAL;
+  afterAll(() => {
+    if (prev === undefined) delete process.env.COMMUNITY_STRICT_HALAL;
+    else process.env.COMMUNITY_STRICT_HALAL = prev;
+  });
+
+  it("needs >=2 contributors and >=0.66", () => {
+    process.env.COMMUNITY_STRICT_HALAL = "1";
+    expect(deriveCommunityVerdict(1, 0)).toBe("unclear");
+    expect(deriveCommunityVerdict(2, 0)).toBe("halal");
+    expect(deriveCommunityVerdict(2, 1)).toBe("halal");
+    expect(deriveCommunityVerdict(3, 2)).toBe("unclear");
   });
 });
 

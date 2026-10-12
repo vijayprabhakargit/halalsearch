@@ -3,14 +3,10 @@
 import { useCallback, useSyncExternalStore } from "react";
 
 export interface Settings {
-  autoValidate: boolean;
-  autoValidateCap: number;
   radius: number;
 }
 
 export const DEFAULT_SETTINGS: Settings = {
-  autoValidate: false,
-  autoValidateCap: 25,
   radius: 1500,
 };
 

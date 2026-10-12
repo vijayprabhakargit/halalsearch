@@ -25,7 +25,9 @@ stored, so the directory gets more useful over time.
 - 🗺️ **Directions**: one-click "Open in Google Maps" deep link.
 - 🧭 **Distances** computed client-side.
 - 🤖 **AI halal check** (optional, off by default): a Gemini-grounded check with
-  cited sources, kept in code and enabled with `NEXT_PUBLIC_ENABLE_AI_CHECK`.
+  cited sources. Strictly **on-demand** — it runs only when you open a place and
+  tap "Validate with AI" (nothing is invoked automatically). Enable with
+  `NEXT_PUBLIC_ENABLE_AI_CHECK=1`.
 
 ## How to use
 
@@ -94,10 +96,11 @@ Set these in `.env.local`:
 
 | Variable | Required | Description |
 | --- | --- | --- |
-| `NEXT_PUBLIC_ENABLE_AI_CHECK` | No | `1` = show the AI halal check (off by default) |
+| `NEXT_PUBLIC_ENABLE_AI_CHECK` | No | `1` = show the on-demand AI halal check (off by default; nothing runs automatically) |
 | `GEMINI_API_KEY` | No (only if the AI check is enabled) | From https://aistudio.google.com/apikey |
 | `GEMINI_MODEL` | No | Override the model (defaults to a Flash-tier model) |
 | `GEMINI_MOCK` | No | `1` = return canned verdicts, no Gemini calls/billing (for UI dev & tests) |
+| `COMMUNITY_STRICT_HALAL` | No | `1` = require ≥2 agreeing reports (and a strong majority) for a community "halal" verdict; off by default (a single halal vote is enough) |
 | `OVERPASS_URL` | No (OSM provider, unused) | Override the primary Overpass endpoint |
 | `OVERPASS_USER_AGENT` | No (OSM provider, unused) | Identify your app to OSM services |
 | `NEXT_PUBLIC_GOOGLE_MAPS_MAP_ID` | No | Google Maps Map ID for advanced markers (defaults to `DEMO_MAP_ID`) |
