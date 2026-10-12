@@ -54,18 +54,21 @@ The supported equivalent is the **Gemini API `google_search` grounding tool**,
 which runs Google Search and returns an answer **with inline citations**. Chosen
 for legality and reliability.
 
-### 3.2 MapLibre + OSM instead of Google Maps
-Google Maps JS/Places would match the "built on Google Maps" vision but brings
-billing and caching restrictions, and there is no structured "halal" field in
-the Places API. OSM + MapLibre is free, has `diet:halal` tags, and gives full
-control. Directions are still offered via a free Google Maps deep link.
+### 3.2 Google Maps (migrated from MapLibre + OSM)
+The first version used MapLibre + OSM (free, `diet:halal` tags, no billing).
+We migrated to **Google Maps JS + Places API (New)** for much better coverage and
+because Google exposes `halal_restaurant` / `vegetarian_restaurant` /
+`vegan_restaurant` as place types (returned in `types`) — the exact signal the
+product wanted. Accepted trade-offs: per-SKU billing (Nearby Search Pro ~5,000
+free/month, then ~$32/1k) and Maps Platform caching limits (only `place_id`
+storable long-term). The OSM provider (Overpass + Photon) is kept in the repo,
+unused, behind `lib/providers/index.ts`.
 
 ### 3.3 Cost control is user-driven, not automatic
-Gemini grounding is billed per executed search (5,000 free/month, then ~$14/1,000).
-Decision: **auto-validate is off by default**; the map shows only OSM-tagged
-places until the user acts. An opt-in "auto-validate nearby" toggle validates the
-nearest **N (default 25, configurable)** with streamed results. A short-lived
-in-memory cache avoids repeat charges within a session.
+When enabled, the AI check is billed per executed search (5,000 free/month, then
+~$14/1,000). Decision: the AI check is **off by default** and, when on,
+auto-validate is off, capped (default 25), and cached in memory. Map data comes
+from Google Places (see 3.2).
 
 ### 3.4 Verdict model: evidence + nuance + disclaimer
 Halal is a religious/dietary requirement; a wrong "halal" is harmful. The AI
@@ -74,32 +77,24 @@ returns **evidence and a nuanced verdict** (`halal` / `likely_halal` /
 "certified halal", always with an "AI estimate — not a certification" disclaimer.
 
 ### 3.5 Marker design
-Basemap POI icons are baked into the tile style's symbol layers and cannot be
-reliably reused for our data-driven points. Instead, a **teardrop pin** encodes:
-**icon = place type** (from cuisine: restaurant/cafe/fast food/dessert) and
-**colour + badge = halal status**. Bigger, clearer, and independently meaningful.
+Rather than the basemap's own POI icons (which we can't restyle or attach our
+status to), we render a **teardrop pin**: **icon = place type** (from cuisine)
+and **colour + badge = halal status**.
 
 ### 3.6 Search is local-first
-Photon gets a location bias, but results are additionally **sorted by distance
-from the user** and shown with a distance label; the Nominatim fallback gets a
-`viewbox` bias. Nearby matches surface first, then others by distance.
+Places Text Search is biased with a location circle and results are **sorted by
+distance from the user** and shown with a distance label, so nearby matches
+surface first.
 
-### 3.7 Overpass resilience + tile fallback
-Public Overpass mirrors are frequently overloaded (500/504). The app **races the
-mirrors concurrently**, retries once, and **caches results for 5 minutes**. If
-every mirror fails, it falls back to the food POIs already present in the map's
-vector tiles (`poi` layer: `restaurant`, `cafe`, `fast_food`, `ice_cream`,
-`bakery`) via `querySourceFeatures` — no extra request. Note: the style's POI
-symbol layers only render at zoom ≥ 15, so we query the **source** tiles, not
-just rendered features. Tile-derived places carry no `diet:halal` tags, so they
-appear unvalidated.
+### 3.7 OSM provider resilience (kept, unused)
+The Overpass lookup (in the unused OSM provider) raced public mirrors, retried,
+cached for 5 minutes, and fell back to map-tile POIs. None of this runs now that
+the active provider is Google Places; it is retained only so we can switch back.
 
-### 3.8 MapLibre worker under Next/Turbopack
-maplibre-gl v6 loads its worker from a separate file and requires
-`setWorkerUrl()`. Next/Turbopack emits the worker without its sibling
-`maplibre-gl-shared.mjs`, so the worker 404s and the map is blank. Fix: a
-`postinstall`/`predev`/`prebuild` script copies both files into `public/maplibre/`
-(git-ignored) and `lib/maplibreWorker.ts` calls `setWorkerUrl`.
+### 3.8 (Historical) MapLibre worker under Next/Turbopack
+For the retired MapLibre path: maplibre-gl v6 needed `setWorkerUrl()` plus a copy
+of its worker files, because Turbopack emitted the worker without its sibling.
+No longer part of the app.
 
 ### 3.9 Graceful degradation when grounding is unavailable
 If the grounded call fails with 429/403 (quota/billing), the app retries the same
@@ -205,28 +200,16 @@ contribution.
   model or a search provider whose terms permit storage — a quality/legal trade
   we deliberately avoid for a halal determination.
 
-### Future (exploratory): optional Google Maps migration
+### Done: Google Maps migration
+Migrated (see 3.2). Notes from the migration, correcting the earlier estimate:
 
-Feasible, but with real trade-offs. The idea: replace MapLibre + OSM with
-**Google Maps JS + Places API (New)** for richer POI coverage and a familiar map.
-It is a swap of the map component and the nearby/search data sources behind the
-existing `Place` interface; the AI and community layers are largely unaffected.
-Caveats:
-
-- **Cost:** Google Maps Platform is billed **per SKU** (Dynamic Maps loads,
-  Nearby Search, Place Details). The free tier is limited and scale costs money —
-  the opposite of the current zero-cost OSM stack.
-- **Halal data:** there is no structured "halal" field. `halal_restaurant` /
-  `vegetarian_restaurant` are place **types**, and are not reliable as Nearby
-  Search filters (Table B — mainly usable for Autocomplete `includedPrimaryTypes`).
-  Halal detection would still depend on the AI and community layers.
-- **Caching / ToS:** Maps Platform restricts storing place data — only
-  `place_id` may be stored long-term. The community DB would therefore keep
-  OSM-derived place data, or store only `place_id` + our own fields. Google
-  branding/attribution ("Powered by Google") is required, and place data may not
-  be used to build a competing database.
-- **Why it might still be worth it:** much better POI coverage than OSM in many
-  regions, and users recognise the map.
-
-Decision: keep OSM as the default; revisit Google Maps only if POI coverage
-becomes the limiting factor and the billing/ToS terms are acceptable.
+- **`halal_restaurant` / `vegetarian_restaurant` / `vegan_restaurant` are Table A
+  types** — returned in a place's `types`, so we badge from `types` without
+  filtering by halal. Broad primary types (`restaurant`, `cafe`,
+  `fast_food_restaurant`, `coffee_shop`, `bakery`) also return restaurant
+  subtypes, so halal places are not missed.
+- Nearby Search uses `includedPrimaryTypes` (to exclude non-food venues that
+  merely contain a cafe) and `rankPreference: POPULARITY` (DISTANCE returned a
+  cluster of obscure ghost listings).
+- Text Search is biased to the user and sorted by distance.
+- Only `place_id` is stored long-term; the community DB keys on `place_id`.

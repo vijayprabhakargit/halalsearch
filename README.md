@@ -28,10 +28,10 @@ stored, so the directory gets more useful over time.
 
 | Concern | Choice |
 | --- | --- |
-| Map rendering | MapLibre GL + OpenStreetMap vector tiles (no API key) |
-| Nearby discovery | Overpass API (raced across public mirrors); falls back to the map's own vector-tile POIs if all mirrors are down |
-| Place search | Photon, falling back to Nominatim |
-| Halal signals | Map-data halal / vegetarian / vegan tags + **community reports** (stored) |
+| Map rendering | Google Maps JavaScript API |
+| Nearby discovery | Google Places API (New) Nearby Search (primary-type filtered, popularity ranked) |
+| Place search | Google Places API (New) Text Search (local-first) |
+| Halal signals | Google place types (`halal_restaurant` / `vegetarian_restaurant` / `vegan_restaurant`) + **community reports** (stored) |
 | Community data | libSQL (`@libsql/client`): local file in dev, Turso in production |
 | AI halal check | Gemini grounding — **optional, off by default** |
 | App framework | Next.js (App Router) + TypeScript + Tailwind CSS |
@@ -39,9 +39,9 @@ stored, so the directory gets more useful over time.
 Data flow:
 
 ```
-Browser ── geolocation ──▶ MapLibre map
-   ├─ GET  /api/nearby?lat&lng&radius   → Overpass → normalized places
-   ├─ GET  /api/search?q&lat&lng        → Photon/Nominatim (local-first)
+Browser ── geolocation ──▶ Google Map
+   ├─ GET  /api/nearby?lat&lng&radius   → Places Nearby Search → places
+   ├─ GET  /api/search?q&lat&lng        → Places Text Search (local-first)
    ├─ POST /api/report                  → store a community assessment
    ├─ POST /api/places/summaries        → community summaries
    └─ POST /api/validate (/stream)      → optional AI check (off by default)
@@ -72,9 +72,9 @@ Set these in `.env.local`:
 | `GEMINI_API_KEY` | No (only if the AI check is enabled) | From https://aistudio.google.com/apikey |
 | `GEMINI_MODEL` | No | Override the model (defaults to a Flash-tier model) |
 | `GEMINI_MOCK` | No | `1` = return canned verdicts, no Gemini calls/billing (for UI dev & tests) |
-| `OVERPASS_URL` | No | Override the primary Overpass endpoint |
-| `OVERPASS_USER_AGENT` | No | Identify your app to OSM services |
-| `NEXT_PUBLIC_MAP_STYLE_URL` | No | MapLibre style URL (defaults to OpenFreeMap "liberty") |
+| `OVERPASS_URL` | No (OSM provider, unused) | Override the primary Overpass endpoint |
+| `OVERPASS_USER_AGENT` | No (OSM provider, unused) | Identify your app to OSM services |
+| `NEXT_PUBLIC_GOOGLE_MAPS_MAP_ID` | No | Google Maps Map ID for advanced markers (defaults to `DEMO_MAP_ID`) |
 | `NEXT_PUBLIC_ENABLE_GOOGLE_CSE` | No | `1` = show the embedded Google Programmable Search Engine pane (off by default) |
 | `NEXT_PUBLIC_GOOGLE_CSE_CX` | No | Google Programmable Search Engine id (`cx`) used by that pane |
 | `NEXT_PUBLIC_DONATE_URL` | No | Donation link shown next to Settings (hidden if unset) |
@@ -114,8 +114,11 @@ GEMINI_MOCK=1
   storing, or building a database from grounded results — they may only be shown
   to the end user for their prompt. This app stores **community reports only**;
   AI verdicts stay in a short-lived in-memory cache.
-- **OSM services**: requests send a `User-Agent`; keep usage modest and respect
-  each provider's usage policy.
+- **Google Maps Platform is billed per SKU** (Dynamic Maps loads; Nearby Search
+  Pro ~5,000 free/month then ~$32/1k; Text Search Pro similar). Nearby searches
+  are debounced and cached to stay near the free tier.
+- **Maps Platform caching:** only `place_id` may be stored long-term, so the
+  community DB keys on `place_id`.
 
 ## Community layer
 
@@ -123,7 +126,7 @@ Users can add their **own** halal assessment (Halal / Not halal / Unclear + an
 optional note) from the place card. These are stored in a lightweight libSQL
 database (`places` + `reports`) and aggregated into a summary; a community
 verdict is only shown once there are at least 3 reports. Stored community data is
-shown first, which reduces AI calls.
+shown first and is the primary source of halal status.
 
 This is **user-generated content only** — AI results are never stored (see
 `docs/DESIGN.md` for the reasoning and the legal constraints). The community
@@ -138,57 +141,48 @@ same client, no code change.
 ```
 app/
   page.tsx                       # map page
-  api/nearby/route.ts            # Overpass nearby search
-  api/search/route.ts            # Photon/Nominatim place search (local-first)
+  api/nearby/route.ts            # nearby places (active provider)
+  api/search/route.ts            # place search (active provider)
   api/validate/route.ts          # single-place AI check (ephemeral)
   api/validate/stream/route.ts   # SSE batch validation
   api/report/route.ts            # store a community assessment
   api/places/summaries/route.ts  # batch community summaries
+  api/health/route.ts            # liveness + DB probe
 components/
   HalalSearchApp.tsx             # top-level client app
-  MapView.tsx                    # MapLibre map + markers
+  MapView.tsx                    # Google Map + markers
   PlacePin.tsx                   # teardrop pin (place type + halal status)
-  PlaceCard.tsx                  # place card (AI verdict, community, links)
+  PlaceCard.tsx                  # place card (community, links, optional AI)
   CommunitySection.tsx           # community summary + "add your assessment"
   GoogleSearchPane.tsx           # optional embedded PSE (flagged off)
   DonateButton.tsx               # optional donate link (env-gated)
   SearchBox.tsx, SettingsPanel.tsx, Disclaimer.tsx, useSettings.ts
 lib/
-  overpass.ts, geocode.ts        # data sources
+  providers/google.ts            # active provider (Places API New)
+  providers/index.ts             # provider selector
+  overpass.ts, geocode.ts        # OSM provider (kept, unused)
   gemini.ts, prompts.ts          # AI halal check
   db.ts, community.ts            # community DB + scoring
-  cache.ts, distance.ts, status.ts, types.ts, api.ts, clientId.ts
-scripts/
-  copy-maplibre-worker.mjs       # maplibre worker files for Next/Turbopack
+  mapConfig.ts, cache.ts, distance.ts, status.ts, types.ts, api.ts, clientId.ts
 docs/
   DESIGN.md                      # design decisions + legal constraints
+  DEPLOYMENT.md                  # deployment plan
 ```
 
 ## Known limitations
 
-- OSM halal tagging coverage is uneven, so some areas show few labelled places;
-  use search + AI check, or enable auto-validate, to fill the gaps.
-- Public Overpass endpoints are frequently overloaded; the app races several
-  mirrors, retries, caches results for 5 minutes, and — if every mirror fails —
-  falls back to food places from the map's own vector tiles (no OSM halal tags
-  in that mode, but you can still validate each place with AI).
-- Combining Gemini structured output with grounding can drop citation metadata;
-  this app reads citations from the grounding metadata separately and parses the
-  verdict from the model text.
+- Google's halal/veg labels are business-self-reported and coverage varies, so a
+  missing label doesn't mean a place isn't halal — labels are a signal, not a
+  guarantee.
+- Nearby Search returns at most 20 results per request.
 - Community reports are anonymous and unmoderated in this version; treat the
   score as a signal, not a certification.
 
 ## Roadmap
 
-- **Google Maps migration** (next): swap MapLibre/OSM for Google Maps JS + Places
-  API (New) for better coverage, and to use Google's native `halal_restaurant` /
-  `vegetarian_restaurant` / `vegan_restaurant` place types as a halal signal.
-  Billing is per SKU (Nearby Search Pro: 5,000 free/month, then ~$32/1k) —
-  mitigated with debounce + area caching to stay near free. Only `place_id` may be
-  stored long-term, so the community DB will key on `place_id`. See `docs/DESIGN.md`.
-- **Tiered halal status** (next): show each signal with its source and confidence —
-  Google Maps tag, community consensus (visit-weighted), and optional certification
-  link.
+- **Tiered halal status** (next): show each signal with its source and
+  confidence — Google Maps tag, community consensus (visit-weighted), and
+  optional certification link.
 - **Google AdSense** (parked): monetization is possible but needs approval and
   real content pages; the app is navigation-heavy so approval is uncertain.
   Donations are the near-term support path.
@@ -200,16 +194,16 @@ docs/
 Live: **https://halalsearch.vercel.app/** — deployed on Vercel with a Turso
 libSQL database for the community layer.
 
-Import the repo into Vercel and set `TURSO_DATABASE_URL` and `TURSO_AUTH_TOKEN`
-(plus any optional vars), then deploy. DB tables are created automatically. Add
-`GEMINI_API_KEY` + `NEXT_PUBLIC_ENABLE_AI_CHECK=1` only if you want the AI check
-(and enable billing on the Google Cloud project for cited sources). Full
-step-by-step, verification checklist, and rollback are in
+Import the repo into Vercel and set `TURSO_DATABASE_URL`, `TURSO_AUTH_TOKEN`,
+`GOOGLE_MAPS_API_KEY`, and `NEXT_PUBLIC_GOOGLE_MAPS_API_KEY` (plus
+`NEXT_PUBLIC_GOOGLE_MAPS_MAP_ID`), then deploy. DB tables are created
+automatically. Add `GEMINI_API_KEY` + `NEXT_PUBLIC_ENABLE_AI_CHECK=1` only if you
+want the AI check. Full step-by-step, verification checklist, and rollback are in
 [`docs/DEPLOYMENT.md`](docs/DEPLOYMENT.md).
 
 ## License
 
 [MIT](LICENSE).
 
-Map data © OpenStreetMap contributors (ODbL). Map tiles by
-[OpenFreeMap](https://openfreemap.org/) / OpenMapTiles.
+Map data and imagery © Google (Google Maps Platform — Maps JavaScript API and
+Places API).

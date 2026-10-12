@@ -36,9 +36,7 @@ Tables are created automatically on first request (no migration step).
 
 1. Vercel → **Add New → Project → Import Git Repository** → select the repo.
 2. Framework preset: **Next.js** (auto). Root directory: repo root.
-3. Leave build/install commands at defaults. The `postinstall` / `prebuild`
-   hooks generate `public/maplibre/` (git-ignored worker files) during build, so
-   the map works in production.
+3. Leave build/install commands at defaults.
 
 ---
 
@@ -48,7 +46,8 @@ Required:
 
 | Var | Value |
 | --- | --- |
-| `GEMINI_API_KEY` | your key |
+| `GOOGLE_MAPS_API_KEY` | server Places key (restricted to Places API (New)) |
+| `NEXT_PUBLIC_GOOGLE_MAPS_API_KEY` | browser key (HTTP-referrer restricted) |
 | `TURSO_DATABASE_URL` | `libsql://…` from step 1 |
 | `TURSO_AUTH_TOKEN` | token from step 1 |
 
@@ -56,10 +55,10 @@ Optional:
 
 | Var | Notes |
 | --- | --- |
+| `NEXT_PUBLIC_GOOGLE_MAPS_MAP_ID` | Map ID for advanced markers (defaults to `DEMO_MAP_ID`) |
+| `GEMINI_API_KEY` + `NEXT_PUBLIC_ENABLE_AI_CHECK=1` | enable the optional AI check |
 | `GEMINI_MODEL` | override the model |
-| `OVERPASS_USER_AGENT` | set a real UA, e.g. `HalalSearch/0.1 (you@example.com)` |
-| `OVERPASS_URL` | pin a specific mirror |
-| `NEXT_PUBLIC_MAP_STYLE_URL` | alternative map style |
+| `NEXT_PUBLIC_DONATE_URL` | donation link next to Settings |
 | `NEXT_PUBLIC_ENABLE_GOOGLE_CSE` / `NEXT_PUBLIC_GOOGLE_CSE_CX` | show the PSE pane |
 
 Notes:
@@ -69,11 +68,12 @@ Notes:
 
 ---
 
-## 4. Google Cloud billing (for citations)
+## 4. Google Cloud billing
 
-Enable billing on the project tied to `GEMINI_API_KEY`. Until then, AI checks
-return an ungrounded answer flagged "Not web-verified". The 5,000 free grounded
-searches/month still apply once billing is enabled.
+Billing must be enabled on the Maps Platform project (required for the map and
+Places calls). For the optional AI check, billing on the Gemini project is also
+needed to use Google Search grounding (citations); without it, AI answers are
+flagged "Not web-verified". The 5,000 free grounded searches/month still apply.
 
 ---
 
@@ -81,14 +81,13 @@ searches/month still apply once billing is enabled.
 
 - Trigger the deploy.
 - Verification checklist:
-  - [ ] Home page loads; map tiles render.
-  - [ ] `GET /maplibre/maplibre-gl-worker.mjs` → 200 (map worker).
+  - [ ] Home page loads; the **Google Map** renders (with the Google logo).
   - [ ] `GET /api/health` → 200 `{"ok":true,"db":"ok"}`.
-  - [ ] Nearby places load (Overpass, or tile fallback if Overpass is down).
+  - [ ] Nearby places load (Google Places) with halal/veg labels where applicable.
   - [ ] Search returns local-first results with distances.
-  - [ ] "Validate with AI" returns a verdict (and sources once billing is on).
   - [ ] "Add your own assessment" saves and re-appears after reopening the place
         (confirms Turso persistence).
+  - [ ] (Only if the AI check is enabled) "Validate with AI" returns a verdict.
 
 ---
 
@@ -98,8 +97,8 @@ searches/month still apply once billing is enabled.
   `/api/validate/stream`, `/api/report`, `/api/nearby`, and `/api/search`. This is
   best-effort: each serverless instance keeps its own counter. For a hard global
   limit, back it with a shared store (e.g. Upstash Redis).
-- **Cost cap:** keep auto-validate off by default; consider a global daily
-  Gemini-search budget/counter.
+- **Cost cap:** the AI check is off by default; if enabled, auto-validate is off
+  and capped. Consider a global daily Gemini-search budget/counter.
 - **Moderation:** community reports are anonymous and unmoderated — add
   flagging/abuse handling before promotion.
 - **Custom domain** (HTTPS is automatic on Vercel).

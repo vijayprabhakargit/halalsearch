@@ -17,7 +17,7 @@ import {
 import type { CommunitySummary, CommunityVerdict } from "@/lib/community";
 import { getClientId } from "@/lib/clientId";
 import { haversineMeters } from "@/lib/distance";
-import { DEFAULT_CENTER } from "@/lib/mapStyle";
+import { DEFAULT_CENTER } from "@/lib/mapConfig";
 import {
   TONE_COLORS,
   TONE_LABELS,
@@ -62,9 +62,6 @@ export default function HalalSearchApp() {
   const [onlyHalalTagged, setOnlyHalalTagged] = useState(false);
   const [viewCenter, setViewCenter] = useState(center);
   const [locateNonce, setLocateNonce] = useState(0);
-  const [tileFallbackSignal, setTileFallbackSignal] = useState(0);
-  const [usingTiles, setUsingTiles] = useState(false);
-  const [tileCount, setTileCount] = useState(0);
 
   const statesRef = useRef<Record<string, VerdictState>>({});
   const lastFetchRef = useRef<{ lat: number; lng: number } | null>(null);
@@ -112,42 +109,17 @@ export default function HalalSearchApp() {
       lastFetchRef.current = { lat, lng };
       setNearbyLoading(true);
       setNearbyError(null);
-      setUsingTiles(false);
-      const forceTiles =
-        typeof window !== "undefined" &&
-        new URLSearchParams(window.location.search).get("tiles") === "1";
-      if (forceTiles) {
-        setNearbyError("Tile mode (debug).");
-        setTileFallbackSignal((n) => n + 1);
-        setNearbyLoading(false);
-        return;
-      }
       try {
         const list = await fetchNearby(lat, lng, settings.radius);
         setPlaces(list);
         void loadSummaries(list);
       } catch (err) {
-        // Overpass is down/overloaded — fall back to the map's own tile POIs.
         setNearbyError((err as Error).message);
-        setTileFallbackSignal((n) => n + 1);
       } finally {
         setNearbyLoading(false);
       }
     },
     [settings.radius, loadSummaries],
-  );
-
-  const handleTilePlaces = useCallback(
-    (list: Place[]) => {
-      setTileCount(list.length);
-      setUsingTiles(true);
-      if (list.length > 0) {
-        setPlaces(list);
-        setNearbyError(null);
-        void loadSummaries(list);
-      }
-    },
-    [loadSummaries],
   );
 
   useEffect(() => {
@@ -321,10 +293,8 @@ export default function HalalSearchApp() {
         selectedId={selected?.placeId ?? null}
         userPosition={position}
         locateSignal={locateNonce}
-        tileFallbackSignal={tileFallbackSignal}
         onSelect={handleSelect}
         onBoundsChanged={handleBoundsChanged}
-        onTilePlaces={handleTilePlaces}
       />
 
       <div className="pointer-events-none absolute inset-x-0 top-0 z-10 flex items-start justify-between gap-3 p-3">
@@ -393,12 +363,6 @@ export default function HalalSearchApp() {
             >
               Retry
             </button>
-          </div>
-        )}
-        {usingTiles && (
-          <div className="pointer-events-auto rounded-md border border-sky-300 bg-sky-50 px-3 py-2 text-xs text-sky-900">
-            OpenStreetMap (Overpass) is unavailable, so places are taken from the map
-            tiles ({tileCount} found). Tap a pin to validate it with AI.
           </div>
         )}
         {nearbyLoading && (
