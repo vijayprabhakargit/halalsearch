@@ -14,31 +14,41 @@ const FIELD_MASK = [
 ].join(",");
 
 /**
- * Broad food/drink primary types. We deliberately include cafes, bars, pubs and
- * breweries so halal ones surface; we do NOT filter by halal — we badge from
- * `types`.
+ * Broad food/drink primary types, so we cover essentially every eatery and
+ * drink venue (restaurants of all cuisines are covered by the general
+ * "restaurant" type). We do NOT filter by halal — we badge from `types`.
+ * Verified accepted by Nearby Search (New); unsupported ones (espresso_bar,
+ * frozen_yogurt_shop) are omitted.
  */
 const FOOD_TYPES = [
   "restaurant",
   "cafe",
   "coffee_shop",
-  "fast_food_restaurant",
   "bakery",
+  "fast_food_restaurant",
   "meal_takeaway",
   "meal_delivery",
+  "food_court",
+  "buffet_restaurant",
+  "cafeteria",
+  "diner",
+  "snack_bar",
   "sandwich_shop",
   "deli",
-  "dessert_restaurant",
-  "dessert_shop",
+  "juice_shop",
+  "tea_house",
+  "acai_shop",
   "ice_cream_shop",
-  "cafeteria",
+  "dessert_shop",
+  "dessert_restaurant",
+  "donut_shop",
+  "bagel_shop",
+  "chocolate_shop",
   "bar",
   "bar_and_grill",
   "pub",
   "brewery",
-  "brewpub",
-  "snack_bar",
-  "food_court",
+  "wine_bar",
 ];
 
 const NEARBY_MAX = 20;
