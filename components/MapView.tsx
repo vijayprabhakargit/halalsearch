@@ -38,7 +38,7 @@ interface MapViewProps {
   searchOrigin: LatLng | null;
   onSelect: (place: Place) => void;
   onBoundsChanged: (center: LatLng) => void;
-  onMapClick: (point: LatLng) => void;
+  onMapClick: (point: MapClickPoint) => void;
 }
 
 interface ControllerProps {
@@ -46,11 +46,21 @@ interface ControllerProps {
   locateSignal: number;
   userPosition: LatLng | null;
   onBoundsChanged: (center: LatLng) => void;
-  onMapClick: (point: LatLng) => void;
+  onMapClick: (point: MapClickPoint) => void;
 }
 
 interface MapClickEvent {
   latLng?: { lat(): number; lng(): number } | null;
+  /** Present when the user clicked a Google base-map POI (IconMouseEvent). */
+  placeId?: string;
+  stop?: () => void;
+}
+
+export interface MapClickPoint {
+  lat: number;
+  lng: number;
+  /** Set when a Google POI was clicked. */
+  placeId?: string;
 }
 
 /** Imperative map behaviour: fly on explicit actions, report the viewport center. */
@@ -97,6 +107,16 @@ function MapController({
   useEffect(() => {
     if (!map) return;
     const listener = map.addListener("click", (event: MapClickEvent) => {
+      if (event.placeId) {
+        // Google POI clicked: suppress its default info window and use the id.
+        event.stop?.();
+        onMapClick({
+          lat: event.latLng?.lat() ?? 0,
+          lng: event.latLng?.lng() ?? 0,
+          placeId: event.placeId,
+        });
+        return;
+      }
       if (event.latLng) {
         onMapClick({ lat: event.latLng.lat(), lng: event.latLng.lng() });
       }

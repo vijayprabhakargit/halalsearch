@@ -1,7 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import MapView, { type FocusTarget } from "./MapView";
+import MapView, { type FocusTarget, type MapClickPoint } from "./MapView";
 import SearchBox from "./SearchBox";
 import SettingsPanel from "./SettingsPanel";
 import PlaceCard from "./PlaceCard";
@@ -322,8 +322,11 @@ export default function HalalSearchApp() {
   // On-demand: click a place that isn't one of our pins -> fetch the place at
   // that point (tiny Nearby search) and tag it.
   const handleMapClick = useCallback(
-    async (point: { lat: number; lng: number }) => {
+    async (point: MapClickPoint) => {
+      // For a Google POI click we have the place id; otherwise fall back to a
+      // coordinate lookup, but ignore clicks that land on one of our own pins.
       if (
+        !point.placeId &&
         markers.some(
           (p) => haversineMeters(p.lat, p.lng, point.lat, point.lng) < 25,
         )
@@ -331,8 +334,12 @@ export default function HalalSearchApp() {
         return;
       }
       try {
-        const { place, summary } = await fetchPlaceAtPoint(point.lat, point.lng);
-        if (!place) return;
+        const result = point.placeId
+          ? await fetchPlaceDetails(point.placeId)
+          : await fetchPlaceAtPoint(point.lat, point.lng);
+        const { place } = result;
+        const summary = result.summary;
+        if (!place || !isFoodPlace(place)) return;
         setPinned((prev) =>
           prev.some((p) => p.placeId === place.placeId) ? prev : [place, ...prev],
         );
