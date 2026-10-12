@@ -189,7 +189,11 @@ export default function PlaceCard({
           </div>
         ))}
 
-        <div className="mt-4 space-y-2 border-t border-slate-100 pt-3">
+        <div
+          className={`space-y-2 ${
+            aiEnabled ? "mt-4 border-t border-slate-100 pt-3" : ""
+          }`}
+        >
           <p className="text-xs font-semibold uppercase tracking-wide text-slate-500">
             Check it yourself
           </p>
