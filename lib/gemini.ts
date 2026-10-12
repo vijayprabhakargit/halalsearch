@@ -4,6 +4,9 @@ import { buildHalalPrompt } from "./prompts";
 import type { Source, ValidateRequest, Verdict, VerdictValue } from "./types";
 
 const DEFAULT_MODEL = process.env.GEMINI_MODEL || "gemini-flash-latest";
+/** Tried in order if the configured model is overloaded (503 "high demand"). */
+const FALLBACK_MODELS = ["gemini-3.6-flash"];
+const MAX_ATTEMPTS = 2;
 const VALID_VERDICTS: VerdictValue[] = ["halal", "likely_halal", "not_halal", "unclear"];
 
 let client: GoogleGenAI | null = null;
@@ -15,7 +18,13 @@ function getClient(): GoogleGenAI {
       "GEMINI_API_KEY is not set. Add it to .env.local or set GEMINI_MOCK=1 for offline mode.",
     );
   }
-  if (!client) client = new GoogleGenAI({ apiKey });
+  if (!client) {
+    client = new GoogleGenAI({
+      apiKey,
+      // Bound each request so an overloaded/slow call can't hang the endpoint.
+      httpOptions: { timeout: 15_000 },
+    });
+  }
   return client;
 }
 
@@ -121,18 +130,17 @@ export async function determineHalal(req: ValidateRequest): Promise<Verdict> {
   }
 
   const ai = getClient();
-  const model = DEFAULT_MODEL;
   const prompt = buildHalalPrompt(req);
 
   let response: GenerateContentResponse;
   let grounded = true;
   try {
-    response = await generate(ai, model, prompt, true);
+    response = await generateResilient(ai, prompt, true);
   } catch (error) {
     if (!isGroundingUnavailable(error)) throw friendlyError(error);
     // Grounding needs billing enabled; fall back to an ungrounded answer.
     grounded = false;
-    response = await generate(ai, model, prompt, false);
+    response = await generateResilient(ai, prompt, false);
   }
 
   const text = response.text ?? "";
@@ -156,7 +164,7 @@ export async function determineHalal(req: ValidateRequest): Promise<Verdict> {
     evidence,
     sources,
     grounded,
-    model: response.modelVersion ?? model,
+    model: response.modelVersion ?? DEFAULT_MODEL,
     checkedAt: new Date().toISOString(),
     cached: false,
   };
@@ -178,6 +186,50 @@ function generate(
       ...(grounded ? { tools: [{ googleSearch: {} }] } : {}),
     },
   });
+}
+
+const delay = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
+
+function modelCandidates(): string[] {
+  return Array.from(new Set([DEFAULT_MODEL, ...FALLBACK_MODELS]));
+}
+
+/** Transient = Google-side capacity/timeout, worth retrying (not quota/auth). */
+function isTransient(error: unknown): boolean {
+  const e = error as { status?: number; code?: number; message?: string };
+  const status = e?.status ?? e?.code;
+  if (status === 500 || status === 502 || status === 503 || status === 504) return true;
+  const message = (e?.message ?? "").toUpperCase();
+  return (
+    message.includes("UNAVAILABLE") ||
+    message.includes("HIGH DEMAND") ||
+    message.includes("OVERLOAD") ||
+    message.includes("TRY AGAIN")
+  );
+}
+
+/**
+ * Generate with retries on transient errors, falling back to alternate models
+ * when the configured one is overloaded.
+ */
+async function generateResilient(
+  ai: GoogleGenAI,
+  prompt: string,
+  grounded: boolean,
+): Promise<GenerateContentResponse> {
+  let lastError: unknown;
+  for (const model of modelCandidates()) {
+    for (let attempt = 0; attempt < MAX_ATTEMPTS; attempt += 1) {
+      try {
+        return await generate(ai, model, prompt, grounded);
+      } catch (error) {
+        lastError = error;
+        if (!isTransient(error)) throw error;
+        await delay(500 * (attempt + 1));
+      }
+    }
+  }
+  throw lastError;
 }
 
 function isGroundingUnavailable(error: unknown): boolean {

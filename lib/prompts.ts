@@ -30,12 +30,15 @@ Definitions and rules:
 - If evidence is missing or conflicting, prefer "unclear"; do not guess.
 - If the business cannot be identified with confidence, return "unclear".
 
-Respond with ONLY a JSON object inside a single \`\`\`json fenced block, using exactly this shape:
+Base your answer on current web sources — search Google for the menu, any
+certification, and recent reviews, and cite them.
+
+Then output a JSON object inside a single \`\`\`json fenced block, using exactly this shape:
 {
   "verdict": "halal" | "likely_halal" | "not_halal" | "unclear",
   "confidence": 0.0,
   "summary": "one or two sentence verdict",
   "evidence": ["short evidence bullet", "..."]
 }
-Do not output any text outside the \`\`\`json block.`;
+Keep any prose brief and put the JSON block at the end.`;
 }
