@@ -13,7 +13,7 @@ export default function DonateButton() {
       href={url}
       target="_blank"
       rel="noreferrer noopener"
-      className="rounded-md border border-slate-300 bg-white px-3 py-2 text-sm font-medium text-slate-700 shadow hover:bg-slate-50"
+      className="hidden rounded-md border border-slate-300 bg-white px-3 py-2 text-sm font-medium text-slate-700 shadow hover:bg-slate-50 sm:inline-flex"
     >
       Donate
     </a>

@@ -302,7 +302,7 @@ export default function HalalSearchApp() {
   }, [selected, position, center]);
 
   return (
-    <div className="relative h-screen w-screen overflow-hidden bg-slate-100">
+    <div className="relative h-[100dvh] w-full overflow-hidden bg-slate-100">
       <MapView
         places={markers}
         states={states}
@@ -317,7 +317,7 @@ export default function HalalSearchApp() {
       />
 
       <div className="pointer-events-none absolute inset-x-0 top-0 z-10 flex items-start justify-between gap-3 p-3">
-        <div className="pointer-events-auto flex w-[min(72vw,30rem)] flex-col gap-2">
+        <div className="pointer-events-auto flex w-[min(68vw,30rem)] flex-col gap-2">
           <SearchBox
             bias={position ?? center}
             nearby={places}
@@ -404,7 +404,7 @@ export default function HalalSearchApp() {
           </div>
         )}
 
-        <div className="pointer-events-auto rounded-lg border border-slate-200 bg-white/95 p-3 text-xs shadow">
+        <div className="pointer-events-auto max-h-[55dvh] overflow-y-auto rounded-lg border border-slate-200 bg-white/95 p-3 text-xs shadow">
           <p className="text-[11px] font-semibold uppercase tracking-wide text-slate-500">
             Show
           </p>

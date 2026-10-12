@@ -61,7 +61,7 @@ export default function PlaceCard({
   const googleUrl = `https://www.google.com/search?q=${encodeURIComponent(googleQuery)}`;
 
   return (
-    <div className="flex max-h-[70vh] w-[min(92vw,26rem)] flex-col overflow-hidden rounded-xl border border-slate-200 bg-white shadow-xl">
+    <div className="flex max-h-[70dvh] w-[min(92vw,26rem)] flex-col overflow-hidden rounded-xl border border-slate-200 bg-white shadow-xl">
       <div className="flex items-start justify-between gap-2 border-b border-slate-100 p-4">
         <div className="min-w-0">
           <h2 className="truncate text-base font-semibold text-slate-900">
