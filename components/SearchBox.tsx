@@ -88,6 +88,7 @@ export default function SearchBox({ bias, nearby, onSelect }: SearchBoxProps) {
         placeholder="Search a place, or pick from nearby…"
         onChange={(e) => setQuery(e.target.value)}
         onFocus={() => setFocused(true)}
+        onClick={() => setFocused(true)}
         onBlur={() => window.setTimeout(() => setFocused(false), 150)}
         className="w-full rounded-full border border-slate-300 bg-white py-3 pl-11 pr-4 text-sm shadow-lg focus:border-slate-400 focus:outline-none sm:py-3.5"
       />
