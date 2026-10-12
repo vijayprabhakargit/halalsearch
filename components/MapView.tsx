@@ -37,6 +37,7 @@ interface MapViewProps {
   searchOrigin: LatLng | null;
   onSelect: (place: Place) => void;
   onBoundsChanged: (center: LatLng) => void;
+  onMapClick: (point: LatLng) => void;
 }
 
 interface ControllerProps {
@@ -44,6 +45,11 @@ interface ControllerProps {
   locateSignal: number;
   userPosition: LatLng | null;
   onBoundsChanged: (center: LatLng) => void;
+  onMapClick: (point: LatLng) => void;
+}
+
+interface MapClickEvent {
+  latLng?: { lat(): number; lng(): number } | null;
 }
 
 /** Imperative map behaviour: fly on explicit actions, report the viewport center. */
@@ -52,6 +58,7 @@ function MapController({
   locateSignal,
   userPosition,
   onBoundsChanged,
+  onMapClick,
 }: ControllerProps) {
   const map = useMap();
   const userRef = useRef(userPosition);
@@ -86,6 +93,16 @@ function MapController({
     return () => listener.remove();
   }, [map, onBoundsChanged]);
 
+  useEffect(() => {
+    if (!map) return;
+    const listener = map.addListener("click", (event: MapClickEvent) => {
+      if (event.latLng) {
+        onMapClick({ lat: event.latLng.lat(), lng: event.latLng.lng() });
+      }
+    });
+    return () => listener.remove();
+  }, [map, onMapClick]);
+
   return null;
 }
 
@@ -100,6 +117,7 @@ export default function MapView({
   searchOrigin,
   onSelect,
   onBoundsChanged,
+  onMapClick,
 }: MapViewProps) {
   return (
     <APIProvider apiKey={GOOGLE_MAPS_API_KEY}>
@@ -118,6 +136,7 @@ export default function MapView({
           locateSignal={locateSignal}
           userPosition={userPosition}
           onBoundsChanged={onBoundsChanged}
+          onMapClick={onMapClick}
         />
 
         {/* Red ring: the point the current nearby search is centred on. */}

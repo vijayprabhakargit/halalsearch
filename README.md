@@ -16,8 +16,11 @@ stored, so the directory gets more useful over time.
 - ✅ **Halal/veg signals**: places already labelled halal / vegetarian / vegan in
   the map data are highlighted immediately.
 - 🙋 **Community halal reports**: mark a place Halal / Not halal / Unclear, with an
-  optional note. Reports are stored and shown to others; a community verdict
-  appears once there are at least 3.
+  optional note. Reports are stored and shown to others; a lone vote reads as
+  **low confidence**, and "halal" is confirmed at **≥2 contributors** with a
+  strong majority.
+- 👆 **Tap to check**: click any spot on the map — even a place that isn't among
+  the nearby pins — to fetch and tag it on demand (community summary included).
 - 🔎 **Search**: find a restaurant/address by name; results are local-first.
 - 🗺️ **Directions**: one-click "Open in Google Maps" deep link.
 - 🧭 **Distances** computed client-side.
@@ -119,8 +122,8 @@ GEMINI_MOCK=1
   Pro ~5,000 free/month then ~$32/1k; Text Search/Details pro-rata). Nearby is a
   **single request capped at Google's 20 results** (no pagination), place details
   are fetched **on demand** when a user opens a place, and Places responses are
-  **cached in memory for the browser session** (cleared on reload) so repeated
-  searches/clicks don't re-bill.
+  **cached in memory for the browser session** (cleared on reload) plus a short
+  **10-minute server cache per area**, so repeated searches/clicks don't re-bill.
 - **Maps Platform caching:** only `place_id` may be stored long-term, so the
   community DB keys on `place_id`.
 

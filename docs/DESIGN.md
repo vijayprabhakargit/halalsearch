@@ -216,6 +216,12 @@ Migrated (see 3.2). Notes from the migration, correcting the earlier estimate:
   demand** (`/api/place`) when a user opens a place, and Places responses are
   **cached in memory for the browser session** (cleared on reload).
 - Text Search is biased to the user and sorted by distance.
+- **Tap-to-check**: clicking any map point runs a tiny Nearby search (≤50 m) to
+  find the food place there and tag it on demand — this is how a user checks a
+  place that isn't among the nearby pins (Google's base-map POIs can't be read).
+- **Caching**: nearby results are cached in a short 10-minute server cache per
+  area (Places data may be cached ≤30 days) plus an in-memory browser-session
+  cache for nearby/search/details, so repeat views don't re-bill.
 - Only `place_id` may be stored long-term; other Places data is cached ≤30 days.
   We currently keep Google name/address/coords in `places` indefinitely — a ToS
   issue to fix (store `place_id` + our own fields; treat Google fields as a

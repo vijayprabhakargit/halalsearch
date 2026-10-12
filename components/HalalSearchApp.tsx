@@ -9,6 +9,7 @@ import DonateButton from "./DonateButton";
 import { useSettings } from "./useSettings";
 import {
   fetchNearby,
+  fetchPlaceAtPoint,
   fetchPlaceDetails,
   fetchSummaries,
   streamValidate,
@@ -317,6 +318,37 @@ export default function HalalSearchApp() {
     });
   }, [pinned, places, filters, communitySummaries, states]);
 
+  // On-demand: click a place that isn't one of our pins -> fetch the place at
+  // that point (tiny Nearby search) and tag it.
+  const handleMapClick = useCallback(
+    async (point: { lat: number; lng: number }) => {
+      if (
+        markers.some(
+          (p) => haversineMeters(p.lat, p.lng, point.lat, point.lng) < 25,
+        )
+      ) {
+        return;
+      }
+      try {
+        const { place, summary } = await fetchPlaceAtPoint(point.lat, point.lng);
+        if (!place) return;
+        setPinned((prev) =>
+          prev.some((p) => p.placeId === place.placeId) ? prev : [place, ...prev],
+        );
+        setSelected(place);
+        if (summary) {
+          setCommunitySummaries((prev) => ({
+            ...prev,
+            [summary.placeId]: summary,
+          }));
+        }
+      } catch {
+        // best-effort
+      }
+    },
+    [markers],
+  );
+
   const showSearchArea =
     haversineMeters(viewCenter.lat, viewCenter.lng, center.lat, center.lng) > 200;
 
@@ -339,6 +371,7 @@ export default function HalalSearchApp() {
         searchOrigin={searchOrigin}
         onSelect={handleSelect}
         onBoundsChanged={handleBoundsChanged}
+        onMapClick={handleMapClick}
       />
 
       <div className="pointer-events-none absolute inset-x-0 top-0 z-10 flex items-start justify-between gap-3 p-3">

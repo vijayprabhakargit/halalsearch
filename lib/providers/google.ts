@@ -1,5 +1,18 @@
+import { TtlCache } from "../cache";
 import { haversineMeters } from "../distance";
 import type { Place } from "../types";
+
+/**
+ * Short server-side cache of nearby results. Places data may legally be cached
+ * for up to 30 days; we keep it short to reduce Google calls for repeat views of
+ * the same area (across users on the same instance).
+ */
+const NEARBY_CACHE_TTL_MS = 10 * 60 * 1000;
+const nearbyCache = new TtlCache<Place[]>(NEARBY_CACHE_TTL_MS);
+
+function areaKey(lat: number, lng: number, radius: number): string {
+  return `${lat.toFixed(3)},${lng.toFixed(3)},${Math.round(radius)}`;
+}
 
 const PLACES_ENDPOINT = "https://places.googleapis.com/v1/places";
 
@@ -117,6 +130,10 @@ export async function getNearbyPlaces(
   radius: number,
   limit: number,
 ): Promise<Place[]> {
+  const key = areaKey(lat, lng, radius);
+  const cached = nearbyCache.get(key);
+  if (cached) return cached.slice(0, limit);
+
   const data = await post<{ places?: GooglePlace[] }>("searchNearby", {
     includedPrimaryTypes: FOOD_TYPES,
     maxResultCount: Math.min(Math.max(limit, 1), NEARBY_MAX),
@@ -125,9 +142,31 @@ export async function getNearbyPlaces(
       circle: { center: { latitude: lat, longitude: lng }, radius },
     },
   });
-  return (data.places ?? [])
+  const places = (data.places ?? [])
     .map(toPlace)
     .filter((p): p is Place => p !== null);
+  nearbyCache.set(key, places);
+  return places.slice(0, limit);
+}
+
+/** Find the (food) place at a clicked map point, via a tiny Nearby search. */
+export async function getPlaceAtPoint(
+  lat: number,
+  lng: number,
+): Promise<Place | null> {
+  const data = await post<{ places?: GooglePlace[] }>("searchNearby", {
+    includedPrimaryTypes: FOOD_TYPES,
+    maxResultCount: 1,
+    rankPreference: "DISTANCE",
+    locationRestriction: {
+      circle: { center: { latitude: lat, longitude: lng }, radius: 50 },
+    },
+  });
+  return (
+    (data.places ?? [])
+      .map(toPlace)
+      .find((p): p is Place => p !== null) ?? null
+  );
 }
 
 /** Fetch a single place (halal/veg tags) by place id — on demand. */

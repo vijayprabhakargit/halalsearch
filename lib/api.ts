@@ -14,6 +14,9 @@ export async function fetchNearby(
   lng: number,
   radius: number,
 ): Promise<Place[]> {
+  const key = `${lat.toFixed(3)},${lng.toFixed(3)},${Math.round(radius)}`;
+  const cached = nearbyCache.get(key);
+  if (cached) return cached;
   const params = new URLSearchParams({
     lat: String(lat),
     lng: String(lng),
@@ -21,13 +24,16 @@ export async function fetchNearby(
   });
   const res = await fetch(`/api/nearby?${params.toString()}`);
   const data = await readJson<{ places: Place[] }>(res);
+  nearbyCache.set(key, data.places);
   return data.places;
 }
 
 // Session-scoped caches (module memory; cleared on page reload/close). Avoids
 // repeat Google calls for the same search or place within a session.
+const nearbyCache = new Map<string, Place[]>();
 const searchCache = new Map<string, Place[]>();
 const detailsCache = new Map<string, PlaceDetailsResult>();
+const pointCache = new Map<string, PlaceAtPointResult>();
 
 export interface PlaceDetailsResult {
   place: Place | null;
@@ -62,6 +68,25 @@ export async function fetchPlaceDetails(
   const res = await fetch(`/api/place?id=${encodeURIComponent(placeId)}`);
   const data = await readJson<PlaceDetailsResult>(res);
   detailsCache.set(placeId, data);
+  return data;
+}
+
+export interface PlaceAtPointResult {
+  place: Place | null;
+  summary: CommunitySummary | null;
+}
+
+/** On-demand: find the food place at a clicked map point. */
+export async function fetchPlaceAtPoint(
+  lat: number,
+  lng: number,
+): Promise<PlaceAtPointResult> {
+  const key = `${lat.toFixed(5)},${lng.toFixed(5)}`;
+  const cached = pointCache.get(key);
+  if (cached) return cached;
+  const res = await fetch(`/api/place/near?lat=${lat}&lng=${lng}`);
+  const data = await readJson<PlaceAtPointResult>(res);
+  pointCache.set(key, data);
   return data;
 }
 
