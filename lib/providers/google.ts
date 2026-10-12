@@ -13,15 +13,12 @@ const FIELD_MASK = [
   "places.primaryType",
 ].join(",");
 
-/**
- * Broad food/drink primary types, so we cover essentially every eatery and
- * drink venue (restaurants of all cuisines are covered by the general
- * "restaurant" type). We do NOT filter by halal — we badge from `types`.
- * Verified accepted by Nearby Search (New); unsupported ones (espresso_bar,
- * frozen_yogurt_shop) are omitted.
- */
-const FOOD_TYPES = [
-  "restaurant",
+// Nearby Search returns at most 20 results per request, so we split the food
+// types into two buckets and merge them — otherwise popular restaurants crowd
+// out cafes/bars/bakeries in the single 20-slot response. (Two calls = 2 Nearby
+// SKU units per load; still well inside the free tier for modest usage.)
+const RESTAURANT_TYPES = ["restaurant"];
+const OTHER_FOOD_TYPES = [
   "cafe",
   "coffee_shop",
   "bakery",
@@ -108,25 +105,54 @@ function toPlace(g: GooglePlace): Place | null {
   };
 }
 
-/** Nearby food places via Places API (New) Nearby Search. */
+async function searchNearbyTypes(
+  types: string[],
+  lat: number,
+  lng: number,
+  radius: number,
+  max: number,
+): Promise<Place[]> {
+  const data = await post<{ places?: GooglePlace[] }>("searchNearby", {
+    includedPrimaryTypes: types,
+    maxResultCount: max,
+    rankPreference: "POPULARITY",
+    locationRestriction: {
+      circle: { center: { latitude: lat, longitude: lng }, radius },
+    },
+  });
+  return (data.places ?? [])
+    .map(toPlace)
+    .filter((p): p is Place => p !== null);
+}
+
+/** Nearby food places via Places API (New) Nearby Search, across two buckets. */
 export async function getNearbyPlaces(
   lat: number,
   lng: number,
   radius: number,
   limit: number,
 ): Promise<Place[]> {
-  const data = await post<{ places?: GooglePlace[] }>("searchNearby", {
-    includedPrimaryTypes: FOOD_TYPES,
-    maxResultCount: Math.min(Math.max(limit, 1), NEARBY_MAX),
-    rankPreference: "POPULARITY",
-    locationRestriction: {
-      circle: { center: { latitude: lat, longitude: lng }, radius },
-    },
-  });
-  const places = (data.places ?? [])
-    .map(toPlace)
-    .filter((p): p is Place => p !== null);
-  return places.slice(0, limit);
+  const per = Math.min(Math.max(limit, 1), NEARBY_MAX);
+  const settled = await Promise.allSettled([
+    searchNearbyTypes(RESTAURANT_TYPES, lat, lng, radius, per),
+    searchNearbyTypes(OTHER_FOOD_TYPES, lat, lng, radius, per),
+  ]);
+
+  const results: Place[] = [];
+  for (const outcome of settled) {
+    if (outcome.status === "fulfilled") results.push(...outcome.value);
+  }
+  if (results.length === 0) {
+    const failed = settled.find((o) => o.status === "rejected");
+    const reason = failed && failed.status === "rejected" ? failed.reason : null;
+    throw reason instanceof Error ? reason : new Error("Places Nearby Search failed");
+  }
+
+  const seen = new Set<string>();
+  const merged = results.filter((p) =>
+    seen.has(p.placeId) ? false : (seen.add(p.placeId), true),
+  );
+  return merged.slice(0, Math.max(limit, NEARBY_MAX));
 }
 
 /** Place search via Places API (New) Text Search, biased toward the user. */
