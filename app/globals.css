@@ -11,3 +11,9 @@ body {
   overflow: hidden;
   overscroll-behavior: none;
 }
+
+/* Tailwind v4 no longer defaults buttons to a pointer cursor. */
+button:not(:disabled),
+[role="button"]:not([aria-disabled="true"]) {
+  cursor: pointer;
+}
