@@ -24,6 +24,8 @@ export interface Place {
   veganTagged: boolean;
   /** Raw OSM tags (OSM provider only). */
   osmTags?: OsmTags;
+  /** Raw source types (Google place types), used for food/venue detection. */
+  types?: string[];
 }
 
 /** True when the data source labels the place halal or vegetarian/vegan. */
@@ -32,12 +34,19 @@ export function hasHalalSignal(place: Place): boolean {
 }
 
 const FOOD_TYPE_PATTERN =
-  /restaurant|cafe|coffee|bakery|food|deli|bistro|diner|eatery|kitchen|grill|buffet|canteen|cafeteria|snack|juice|tea_house|ice_cream|dessert|donut|bagel|sandwich|pizza|bar|pub|brewery|wine_bar|acai|chocolate/i;
+  /restaurant|cafe|coffee|bakery|pastry|confection|cake|sweet|dessert|donut|bagel|ice_cream|gelato|yogurt|juice|smoothie|tea|sandwich|pizza|burger|kebab|falafel|shawarma|sushi|ramen|noodle|taco|pancake|creamery|deli|bistro|diner|eatery|kitchen|grill|buffet|canteen|cafeteria|snack|bar|pub|brewery|wine_bar|acai|chocolat|food/i;
 
-/** Heuristic: is this a food/drink venue, or just a place (city, station, shop)? */
+/**
+ * Heuristic: is this a food/drink venue, or just a place (city, station, shop)?
+ * Checks the primary type and the full type list, so we don't miss a place whose
+ * primary type is unusual (e.g. `pastry_shop`) but which is clearly food.
+ */
 export function isFoodPlace(place: Place): boolean {
   if (place.halalTagged || place.vegetarianTagged || place.veganTagged) return true;
-  return place.cuisine != null && FOOD_TYPE_PATTERN.test(place.cuisine);
+  const candidates = [place.cuisine, ...(place.types ?? [])];
+  return candidates.some(
+    (t) => typeof t === "string" && FOOD_TYPE_PATTERN.test(t),
+  );
 }
 
 export type VerdictValue = "halal" | "likely_halal" | "not_halal" | "unclear";
