@@ -120,19 +120,10 @@ export default function MapView({
           onBoundsChanged={onBoundsChanged}
         />
 
-        {/* Red pin: where the current nearby search is centred (like Google). */}
+        {/* Red ring: the point the current nearby search is centred on. */}
         {searchOrigin && (
-          <AdvancedMarker position={searchOrigin} zIndex={400} title="Search origin">
-            <svg viewBox="0 0 28 36" width={30} height={38} className="drop-shadow-md">
-              <path
-                d="M14 1C7.4 1 2 6.4 2 13c0 8 12 22 12 22s12-14 12-22C26 6.4 20.6 1 14 1z"
-                fill="#dc2626"
-                stroke="white"
-                strokeWidth="2"
-                strokeLinejoin="round"
-              />
-              <circle cx="14" cy="13" r="4.5" fill="white" />
-            </svg>
+          <AdvancedMarker position={searchOrigin} zIndex={1500} title="Search origin">
+            <span className="pointer-events-none block h-10 w-10 translate-y-1/2 rounded-full border-[3px] border-red-500 shadow-[0_0_0_3px_rgba(255,255,255,0.7)]" />
           </AdvancedMarker>
         )}
 

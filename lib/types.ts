@@ -32,7 +32,7 @@ export function hasHalalSignal(place: Place): boolean {
 }
 
 const FOOD_TYPE_PATTERN =
-  /restaurant|cafe|coffee|bakery|food|deli|bistro|diner|eatery|kitchen|grill|buffet|canteen|cafeteria|snack|juice|tea_house|ice_cream|dessert|donut|bagel|sandwich|pizza|bar|pub|brewery|wine_bar|acai|chocolate/;
+  /restaurant|cafe|coffee|bakery|food|deli|bistro|diner|eatery|kitchen|grill|buffet|canteen|cafeteria|snack|juice|tea_house|ice_cream|dessert|donut|bagel|sandwich|pizza|bar|pub|brewery|wine_bar|acai|chocolate/i;
 
 /** Heuristic: is this a food/drink venue, or just a place (city, station, shop)? */
 export function isFoodPlace(place: Place): boolean {
