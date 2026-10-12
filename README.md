@@ -29,7 +29,8 @@ stored, so the directory gets more useful over time.
 | Concern | Choice |
 | --- | --- |
 | Map rendering | Google Maps JavaScript API |
-| Nearby discovery | Google Places API (New) Nearby Search (primary-type filtered, popularity ranked) |
+| Nearby discovery | Google Places API (New) Nearby Search — **up to 20 per area** (single request) |
+| Place details | Google Places API (New) Place Details — **on demand**, when a user opens a place |
 | Place search | Google Places API (New) Text Search (local-first) |
 | Halal signals | Google place types (`halal_restaurant` / `vegetarian_restaurant` / `vegan_restaurant`) + **community reports** (stored) |
 | Community data | libSQL (`@libsql/client`): local file in dev, Turso in production |
@@ -115,8 +116,11 @@ GEMINI_MOCK=1
   to the end user for their prompt. This app stores **community reports only**;
   AI verdicts stay in a short-lived in-memory cache.
 - **Google Maps Platform is billed per SKU** (Dynamic Maps loads; Nearby Search
-  Pro ~5,000 free/month then ~$32/1k; Text Search Pro similar). Nearby searches
-  are debounced and cached to stay near the free tier.
+  Pro ~5,000 free/month then ~$32/1k; Text Search/Details pro-rata). Nearby is a
+  **single request capped at Google's 20 results** (no pagination), place details
+  are fetched **on demand** when a user opens a place, and Places responses are
+  **cached in memory for the browser session** (cleared on reload) so repeated
+  searches/clicks don't re-bill.
 - **Maps Platform caching:** only `place_id` may be stored long-term, so the
   community DB keys on `place_id`.
 

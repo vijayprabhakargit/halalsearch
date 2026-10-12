@@ -9,6 +9,7 @@ import DonateButton from "./DonateButton";
 import { useSettings } from "./useSettings";
 import {
   fetchNearby,
+  fetchPlaceDetails,
   fetchSummaries,
   streamValidate,
   submitReport,
@@ -174,12 +175,36 @@ export default function HalalSearchApp() {
     }
   }, [position]);
 
-  const handleSelect = useCallback((place: Place) => {
-    setSelected(place);
-    setPinned((prev) =>
-      prev.some((p) => p.placeId === place.placeId) ? prev : [place, ...prev],
-    );
+  const loadPlaceDetails = useCallback(async (place: Place) => {
+    try {
+      const { place: fresh, summary } = await fetchPlaceDetails(place.placeId);
+      if (fresh) {
+        const merge = (p: Place) =>
+          p.placeId === place.placeId ? { ...p, ...fresh } : p;
+        setPlaces((prev) => prev.map(merge));
+        setPinned((prev) => prev.map(merge));
+        setSelected((prev) =>
+          prev && prev.placeId === place.placeId ? { ...prev, ...fresh } : prev,
+        );
+      }
+      if (summary) {
+        setCommunitySummaries((prev) => ({ ...prev, [summary.placeId]: summary }));
+      }
+    } catch {
+      // details are best-effort
+    }
   }, []);
+
+  const handleSelect = useCallback(
+    (place: Place) => {
+      setSelected(place);
+      setPinned((prev) =>
+        prev.some((p) => p.placeId === place.placeId) ? prev : [place, ...prev],
+      );
+      void loadPlaceDetails(place);
+    },
+    [loadPlaceDetails],
+  );
 
   const runSingleValidation = useCallback(async (place: Place) => {
     setStates((prev) => ({ ...prev, [place.placeId]: { status: "loading" } }));
@@ -334,6 +359,7 @@ export default function HalalSearchApp() {
               setCenter({ lat: place.lat, lng: place.lng });
               setSearchOrigin({ lat: place.lat, lng: place.lng });
               focusOn(place.lat, place.lng);
+              void loadPlaceDetails(place);
             }}
           />
           <button

@@ -3,8 +3,8 @@ import type { Place } from "../types";
 
 const PLACES_ENDPOINT = "https://places.googleapis.com/v1/places";
 
-/** Only the fields we render — keeps the response small (and the SKU tier down). */
-const FIELD_MASK = [
+/** Search field mask (nearby/text) — only the fields we render. */
+const SEARCH_FIELD_MASK = [
   "places.id",
   "places.displayName",
   "places.formattedAddress",
@@ -13,12 +13,16 @@ const FIELD_MASK = [
   "places.primaryType",
 ].join(",");
 
-// Nearby Search returns at most 20 results per request, so we split the food
-// types into two buckets and merge them — otherwise popular restaurants crowd
-// out cafes/bars/bakeries in the single 20-slot response. (Two calls = 2 Nearby
-// SKU units per load; still well inside the free tier for modest usage.)
-const RESTAURANT_TYPES = ["restaurant"];
-const OTHER_FOOD_TYPES = [
+/** Place Details uses the same fields but without the `places.` prefix. */
+const DETAILS_FIELD_MASK =
+  "id,displayName,formattedAddress,location,types,primaryType";
+
+/**
+ * Food/drink primary types for Nearby Search. Google returns restaurant
+ * subtypes (e.g. indian_restaurant) when you ask for the general "restaurant".
+ */
+const FOOD_TYPES = [
+  "restaurant",
   "cafe",
   "coffee_shop",
   "bakery",
@@ -48,6 +52,7 @@ const OTHER_FOOD_TYPES = [
   "wine_bar",
 ];
 
+/** Single Nearby request — Google caps results at 20 and offers no pagination. */
 const NEARBY_MAX = 20;
 
 interface GooglePlace {
@@ -71,7 +76,7 @@ async function post<T>(method: string, body: unknown): Promise<T> {
     headers: {
       "Content-Type": "application/json",
       "X-Goog-Api-Key": apiKey(),
-      "X-Goog-FieldMask": FIELD_MASK,
+      "X-Goog-FieldMask": SEARCH_FIELD_MASK,
     },
     body: JSON.stringify(body),
     cache: "no-store",
@@ -105,16 +110,16 @@ function toPlace(g: GooglePlace): Place | null {
   };
 }
 
-async function searchNearbyTypes(
-  types: string[],
+/** Nearby food places via Places API (New) Nearby Search — up to 20. */
+export async function getNearbyPlaces(
   lat: number,
   lng: number,
   radius: number,
-  max: number,
+  limit: number,
 ): Promise<Place[]> {
   const data = await post<{ places?: GooglePlace[] }>("searchNearby", {
-    includedPrimaryTypes: types,
-    maxResultCount: max,
+    includedPrimaryTypes: FOOD_TYPES,
+    maxResultCount: Math.min(Math.max(limit, 1), NEARBY_MAX),
     rankPreference: "POPULARITY",
     locationRestriction: {
       circle: { center: { latitude: lat, longitude: lng }, radius },
@@ -125,34 +130,25 @@ async function searchNearbyTypes(
     .filter((p): p is Place => p !== null);
 }
 
-/** Nearby food places via Places API (New) Nearby Search, across two buckets. */
-export async function getNearbyPlaces(
-  lat: number,
-  lng: number,
-  radius: number,
-  limit: number,
-): Promise<Place[]> {
-  const per = Math.min(Math.max(limit, 1), NEARBY_MAX);
-  const settled = await Promise.allSettled([
-    searchNearbyTypes(RESTAURANT_TYPES, lat, lng, radius, per),
-    searchNearbyTypes(OTHER_FOOD_TYPES, lat, lng, radius, per),
-  ]);
-
-  const results: Place[] = [];
-  for (const outcome of settled) {
-    if (outcome.status === "fulfilled") results.push(...outcome.value);
-  }
-  if (results.length === 0) {
-    const failed = settled.find((o) => o.status === "rejected");
-    const reason = failed && failed.status === "rejected" ? failed.reason : null;
-    throw reason instanceof Error ? reason : new Error("Places Nearby Search failed");
-  }
-
-  const seen = new Set<string>();
-  const merged = results.filter((p) =>
-    seen.has(p.placeId) ? false : (seen.add(p.placeId), true),
+/** Fetch a single place (halal/veg tags) by place id — on demand. */
+export async function getPlaceDetails(placeId: string): Promise<Place | null> {
+  const response = await fetch(
+    `${PLACES_ENDPOINT}/${encodeURIComponent(placeId)}`,
+    {
+      headers: {
+        "X-Goog-Api-Key": apiKey(),
+        "X-Goog-FieldMask": DETAILS_FIELD_MASK,
+      },
+      cache: "no-store",
+    },
   );
-  return merged.slice(0, Math.max(limit, NEARBY_MAX));
+  if (!response.ok) {
+    const text = await response.text();
+    throw new Error(
+      `Google Place Details failed (${response.status}): ${text.slice(0, 200)}`,
+    );
+  }
+  return toPlace((await response.json()) as GooglePlace);
 }
 
 /** Place search via Places API (New) Text Search, biased toward the user. */

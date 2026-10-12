@@ -210,6 +210,13 @@ Migrated (see 3.2). Notes from the migration, correcting the earlier estimate:
   subtypes, so halal places are not missed.
 - Nearby Search uses `includedPrimaryTypes` (to exclude non-food venues that
   merely contain a cafe) and `rankPreference: POPULARITY` (DISTANCE returned a
-  cluster of obscure ghost listings).
+  cluster of obscure ghost listings). It returns **at most 20 results with no
+  pagination**, so nearby is deliberately capped at 20 (with an optional second
+  type bucket for cafes/bars — see the cost note). **Place details are fetched on
+  demand** (`/api/place`) when a user opens a place, and Places responses are
+  **cached in memory for the browser session** (cleared on reload).
 - Text Search is biased to the user and sorted by distance.
-- Only `place_id` is stored long-term; the community DB keys on `place_id`.
+- Only `place_id` may be stored long-term; other Places data is cached ≤30 days.
+  We currently keep Google name/address/coords in `places` indefinitely — a ToS
+  issue to fix (store `place_id` + our own fields; treat Google fields as a
+  ≤30-day cache).

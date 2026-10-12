@@ -24,11 +24,24 @@ export async function fetchNearby(
   return data.places;
 }
 
+// Session-scoped caches (module memory; cleared on page reload/close). Avoids
+// repeat Google calls for the same search or place within a session.
+const searchCache = new Map<string, Place[]>();
+const detailsCache = new Map<string, PlaceDetailsResult>();
+
+export interface PlaceDetailsResult {
+  place: Place | null;
+  summary: CommunitySummary;
+}
+
 export async function searchPlaces(
   query: string,
   lat?: number,
   lng?: number,
 ): Promise<Place[]> {
+  const key = `${query.trim().toLowerCase()}|${lat?.toFixed(3) ?? ""}|${lng?.toFixed(3) ?? ""}`;
+  const cached = searchCache.get(key);
+  if (cached) return cached;
   const params = new URLSearchParams({ q: query });
   if (lat != null && lng != null) {
     params.set("lat", String(lat));
@@ -36,7 +49,20 @@ export async function searchPlaces(
   }
   const res = await fetch(`/api/search?${params.toString()}`);
   const data = await readJson<{ places: Place[] }>(res);
+  searchCache.set(key, data.places);
   return data.places;
+}
+
+/** On-demand place details (Google halal/veg tags) + community summary. */
+export async function fetchPlaceDetails(
+  placeId: string,
+): Promise<PlaceDetailsResult> {
+  const cached = detailsCache.get(placeId);
+  if (cached) return cached;
+  const res = await fetch(`/api/place?id=${encodeURIComponent(placeId)}`);
+  const data = await readJson<PlaceDetailsResult>(res);
+  detailsCache.set(placeId, data);
+  return data;
 }
 
 export async function validatePlace(req: ValidateRequest): Promise<Verdict> {

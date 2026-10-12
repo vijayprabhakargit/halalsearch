@@ -8,6 +8,7 @@ export interface PlaceProvider {
     limit: number,
   ): Promise<Place[]>;
   searchPlaces(query: string, lat?: number, lng?: number): Promise<Place[]>;
+  getPlaceDetails(placeId: string): Promise<Place | null>;
 }
 
 /**
@@ -15,4 +16,4 @@ export interface PlaceProvider {
  * reverts to OpenStreetMap (Overpass + Photon) — that module is kept in the
  * repo, unused.
  */
-export { getNearbyPlaces, searchPlaces } from "./google";
+export { getNearbyPlaces, searchPlaces, getPlaceDetails } from "./google";
