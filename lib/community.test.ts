@@ -1,25 +1,37 @@
 import { describe, expect, it } from "vitest";
-import { buildSummary, communityTone, deriveCommunityVerdict } from "./community";
+import { buildSummary, communityConfidence, communityTone, deriveCommunityVerdict } from "./community";
 
 describe("deriveCommunityVerdict", () => {
   it("returns null with no decided reports", () => {
     expect(deriveCommunityVerdict(0, 0)).toBeNull();
   });
 
-  it("treats a single vote as the verdict", () => {
-    expect(deriveCommunityVerdict(1, 0)).toBe("halal");
-    expect(deriveCommunityVerdict(0, 1)).toBe("not_halal");
+  it("does not confirm halal from a single vote", () => {
+    expect(deriveCommunityVerdict(1, 0)).toBe("unclear");
   });
 
-  it("follows the majority as votes arrive", () => {
-    expect(deriveCommunityVerdict(2, 1)).toBe("halal");
+  it("downgrades fast on a clear negative majority", () => {
+    expect(deriveCommunityVerdict(0, 1)).toBe("not_halal");
     expect(deriveCommunityVerdict(1, 2)).toBe("not_halal");
+  });
+
+  it("confirms halal with >=2 contributors and a strong majority", () => {
+    expect(deriveCommunityVerdict(2, 0)).toBe("halal");
+    expect(deriveCommunityVerdict(2, 1)).toBe("halal");
     expect(deriveCommunityVerdict(5, 1)).toBe("halal");
   });
 
   it("returns unclear on a tie", () => {
     expect(deriveCommunityVerdict(1, 1)).toBe("unclear");
     expect(deriveCommunityVerdict(2, 2)).toBe("unclear");
+  });
+});
+
+describe("communityConfidence", () => {
+  it("scales with the number of decided reports", () => {
+    expect(communityConfidence({ halal: 1, notHalal: 0 })).toBe("low");
+    expect(communityConfidence({ halal: 2, notHalal: 0 })).toBe("medium");
+    expect(communityConfidence({ halal: 5, notHalal: 0 })).toBe("high");
   });
 });
 

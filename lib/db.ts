@@ -1,4 +1,5 @@
 import { createClient, type Client } from "@libsql/client";
+import { randomUUID } from "node:crypto";
 import { mkdirSync } from "node:fs";
 import { dirname } from "node:path";
 import {
@@ -72,6 +73,13 @@ async function ensureSchema(): Promise<void> {
       await c.execute(
         `CREATE INDEX IF NOT EXISTS idx_reports_place ON reports(place_id)`,
       );
+      // De-dupe any existing rows, then enforce one report per (place, identity).
+      await c.execute(
+        `DELETE FROM reports WHERE id NOT IN (SELECT MAX(id) FROM reports GROUP BY place_id, client_id)`,
+      );
+      await c.execute(
+        `CREATE UNIQUE INDEX IF NOT EXISTS idx_reports_place_client ON reports(place_id, client_id)`,
+      );
     })();
   }
   return schemaReady;
@@ -126,8 +134,17 @@ export interface ReportInput {
   source?: string;
 }
 
+/** Thrown when a place has received too many reports in a short window. */
+export class ReportRateLimitError extends Error {}
+
+const PLACE_REPORT_CAP = 8;
+const PLACE_REPORT_WINDOW = "-1 hour";
+
 export async function addReport(report: ReportInput): Promise<void> {
   await ensureSchema();
+  const client = getClient();
+  const clientId = report.clientId ?? randomUUID();
+
   if (report.name && report.lat != null && report.lng != null) {
     await upsertPlace({
       placeId: report.placeId,
@@ -139,9 +156,33 @@ export async function addReport(report: ReportInput): Promise<void> {
       source: report.source,
     });
   }
-  await getClient().execute({
-    sql: `INSERT INTO reports (place_id, verdict, note, client_id) VALUES (?, ?, ?, ?)`,
-    args: [report.placeId, report.verdict, report.note ?? null, report.clientId ?? null],
+
+  // Cap bursts of fresh reports on the same place (DB-counted, so it holds
+  // across instances). Re-voting by the same identity updates the existing row
+  // and is always allowed.
+  const existing = await client.execute({
+    sql: `SELECT id FROM reports WHERE place_id = ? AND client_id = ?`,
+    args: [report.placeId, clientId],
+  });
+  if (existing.rows.length === 0) {
+    const count = await client.execute({
+      sql: `SELECT COUNT(*) AS n FROM reports WHERE place_id = ? AND created_at >= datetime('now', ?)`,
+      args: [report.placeId, PLACE_REPORT_WINDOW],
+    });
+    if (Number(count.rows[0]?.n ?? 0) >= PLACE_REPORT_CAP) {
+      throw new ReportRateLimitError(
+        "This place has received many reports recently. Please try again later.",
+      );
+    }
+  }
+
+  await client.execute({
+    sql: `INSERT INTO reports (place_id, verdict, note, client_id, created_at)
+          VALUES (?, ?, ?, ?, datetime('now'))
+          ON CONFLICT(place_id, client_id) DO UPDATE SET
+            verdict = excluded.verdict,
+            note = excluded.note`,
+    args: [report.placeId, report.verdict, report.note ?? null, clientId],
   });
 }
 

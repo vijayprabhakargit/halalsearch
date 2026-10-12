@@ -15,7 +15,6 @@ import {
   validatePlace,
 } from "@/lib/api";
 import type { CommunitySummary, CommunityVerdict } from "@/lib/community";
-import { getClientId } from "@/lib/clientId";
 import { haversineMeters } from "@/lib/distance";
 import { DEFAULT_CENTER } from "@/lib/mapConfig";
 import { TONE_COLORS, type VerdictState } from "@/lib/status";
@@ -204,7 +203,6 @@ export default function HalalSearchApp() {
         placeId: place.placeId,
         verdict,
         note: note || undefined,
-        clientId: getClientId(),
         name: place.name,
         lat: place.lat,
         lng: place.lng,

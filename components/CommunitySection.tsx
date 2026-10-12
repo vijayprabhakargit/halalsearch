@@ -1,8 +1,12 @@
 "use client";
 
 import { useState } from "react";
-import type { CommunitySummary, CommunityVerdict } from "@/lib/community";
-import { VERDICT_LABELS, type Place, type VerdictValue } from "@/lib/types";
+import {
+  communityConfidence,
+  type CommunitySummary,
+  type CommunityVerdict,
+} from "@/lib/community";
+import { type Place, type VerdictValue } from "@/lib/types";
 
 const VERDICT_STYLES: Record<VerdictValue, string> = {
   halal: "border-green-300 bg-green-100 text-green-800",
@@ -16,6 +20,27 @@ const OPTIONS: { value: CommunityVerdict; label: string }[] = [
   { value: "not_halal", label: "Not halal" },
   { value: "unclear", label: "Unclear" },
 ];
+
+/** Human label for a summary, reflecting the asymmetric threshold. */
+function buildLabel(summary: CommunitySummary): {
+  text: string;
+  tone: VerdictValue | null;
+} {
+  const decided = summary.halal + summary.notHalal;
+  if (decided === 0) {
+    return { text: "Only \u201Cunclear\u201D votes so far", tone: null };
+  }
+  if (summary.verdict === "halal") {
+    return { text: "Halal \u2014 community-confirmed", tone: "halal" };
+  }
+  if (summary.verdict === "not_halal") {
+    return { text: "Not halal \u2014 community", tone: "not_halal" };
+  }
+  if (decided === 1 && summary.halal === 1) {
+    return { text: "1 confirmation (low confidence)", tone: null };
+  }
+  return { text: "Community: mixed signals", tone: "unclear" };
+}
 
 interface CommunitySectionProps {
   place: Place;
@@ -50,26 +75,31 @@ export default function CommunitySection({
     }
   };
 
+  const label = summary && summary.total > 0 ? buildLabel(summary) : null;
+
   return (
     <div className="mt-4 space-y-2 border-t border-slate-100 pt-3">
       <p className="text-xs font-semibold uppercase tracking-wide text-slate-500">
         Community
       </p>
 
-      {summary && summary.total > 0 ? (
+      {summary && label ? (
         <div className="space-y-1">
-          {summary.verdict ? (
-            <span
-              className={`inline-block rounded-full border px-2.5 py-1 text-sm font-semibold ${
-                VERDICT_STYLES[summary.verdict]
-              }`}
-            >
-              {VERDICT_LABELS[summary.verdict]}
+          {label.tone ? (
+            <span className="flex items-center gap-2">
+              <span
+                className={`inline-block rounded-full border px-2.5 py-1 text-sm font-semibold ${
+                  VERDICT_STYLES[label.tone]
+                }`}
+              >
+                {label.text}
+              </span>
+              <span className="text-[11px] text-slate-400">
+                {communityConfidence(summary)} confidence
+              </span>
             </span>
           ) : (
-            <span className="text-xs text-slate-500">
-              Only &ldquo;unclear&rdquo; votes so far.
-            </span>
+            <span className="text-xs text-slate-600">{label.text}</span>
           )}
           <p className="text-xs text-slate-600">
             {summary.halal} halal · {summary.notHalal} not halal ·{" "}

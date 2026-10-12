@@ -1,6 +1,7 @@
 import { NextResponse, type NextRequest } from "next/server";
 import type { CommunityVerdict } from "@/lib/community";
-import { addReport, getSummary } from "@/lib/db";
+import { addReport, getSummary, ReportRateLimitError } from "@/lib/db";
+import { IDENTITY_COOKIE, issueIdentity, verifyIdentity } from "@/lib/identity";
 import { enforceRateLimit } from "@/lib/rateLimit";
 
 const VERDICTS = new Set<CommunityVerdict>(["halal", "not_halal", "unclear"]);
@@ -43,12 +44,21 @@ export async function POST(request: NextRequest) {
     );
   }
 
+  // Identity is server-issued (signed, HttpOnly cookie), not client-supplied.
+  let clientId = verifyIdentity(request.cookies.get(IDENTITY_COOKIE)?.value);
+  let newCookie: string | null = null;
+  if (!clientId) {
+    const issued = issueIdentity();
+    clientId = issued.id;
+    newCookie = issued.cookie;
+  }
+
   try {
     await addReport({
       placeId,
       verdict,
       note: body.note?.slice(0, MAX_NOTE),
-      clientId: body.clientId?.slice(0, 64),
+      clientId,
       name: body.name,
       lat: typeof body.lat === "number" ? body.lat : undefined,
       lng: typeof body.lng === "number" ? body.lng : undefined,
@@ -57,8 +67,21 @@ export async function POST(request: NextRequest) {
       source: body.source,
     });
     const summary = await getSummary(placeId);
-    return NextResponse.json({ summary });
+    const response = NextResponse.json({ summary });
+    if (newCookie) {
+      response.cookies.set(IDENTITY_COOKIE, newCookie, {
+        httpOnly: true,
+        sameSite: "lax",
+        secure: process.env.NODE_ENV === "production",
+        path: "/",
+        maxAge: 60 * 60 * 24 * 365,
+      });
+    }
+    return response;
   } catch (error) {
+    if (error instanceof ReportRateLimitError) {
+      return NextResponse.json({ error: error.message }, { status: 429 });
+    }
     return NextResponse.json(
       { error: (error as Error).message },
       { status: 502 },

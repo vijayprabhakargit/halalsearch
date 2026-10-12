@@ -18,9 +18,11 @@ export interface CommunitySummary {
 /**
  * Derive a verdict from decided (halal/not-halal) report counts.
  *
- * There is no minimum sample: a single vote counts, and the verdict shifts as
- * more votes arrive (ties are "unclear"). The UI always shows the raw counts and
- * a disclaimer, so a lone vote reads as "1 confirmation", not a certification.
+ * Asymmetric on purpose:
+ * - a wrong "halal" is harmful, so upgrading to `halal` needs corroboration:
+ *   at least two contributors AND a >=0.66 majority. A lone vote stays
+ *   "unclear" (shown in the UI as "low confidence").
+ * - downgrading is fast: a clear negative majority (ratio < 0.5) wins at once.
  */
 export function deriveCommunityVerdict(
   halal: number,
@@ -29,9 +31,22 @@ export function deriveCommunityVerdict(
   const decided = halal + notHalal;
   if (decided === 0) return null;
   const ratio = halal / decided;
-  if (ratio > 0.5) return "halal";
   if (ratio < 0.5) return "not_halal";
+  if (decided >= 2 && ratio >= 0.66) return "halal";
   return "unclear";
+}
+
+export type CommunityConfidence = "low" | "medium" | "high";
+
+/** Confidence from the number of decided reports (independent of verdict). */
+export function communityConfidence(summary: {
+  halal: number;
+  notHalal: number;
+}): CommunityConfidence {
+  const decided = summary.halal + summary.notHalal;
+  if (decided >= 5) return "high";
+  if (decided >= 2) return "medium";
+  return "low";
 }
 
 export function buildSummary(
