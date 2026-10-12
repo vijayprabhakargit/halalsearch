@@ -68,7 +68,7 @@ export default function CommunitySection({
             </span>
           ) : (
             <span className="text-xs text-slate-500">
-              Not enough reports to decide yet.
+              Only &ldquo;unclear&rdquo; votes so far.
             </span>
           )}
           <p className="text-xs text-slate-600">
@@ -125,7 +125,7 @@ export default function CommunitySection({
           </button>
           {error && <p className="text-xs text-red-600">{error}</p>}
           <p className="text-[11px] text-slate-400">
-            Your own assessment — not the AI result. Please be accurate; others rely on it.
+            Your own experience. Please be accurate — others rely on it.
           </p>
         </div>
       )}

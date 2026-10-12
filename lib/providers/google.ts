@@ -13,13 +13,32 @@ const FIELD_MASK = [
   "places.primaryType",
 ].join(",");
 
-/** Broad food primary types; we do NOT filter by halal — we badge from `types`. */
+/**
+ * Broad food/drink primary types. We deliberately include cafes, bars, pubs and
+ * breweries so halal ones surface; we do NOT filter by halal — we badge from
+ * `types`.
+ */
 const FOOD_TYPES = [
   "restaurant",
   "cafe",
   "coffee_shop",
   "fast_food_restaurant",
   "bakery",
+  "meal_takeaway",
+  "meal_delivery",
+  "sandwich_shop",
+  "deli",
+  "dessert_restaurant",
+  "dessert_shop",
+  "ice_cream_shop",
+  "cafeteria",
+  "bar",
+  "bar_and_grill",
+  "pub",
+  "brewery",
+  "brewpub",
+  "snack_bar",
+  "food_court",
 ];
 
 const NEARBY_MAX = 20;

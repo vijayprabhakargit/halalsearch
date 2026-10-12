@@ -2,9 +2,6 @@ import type { VerdictValue } from "./types";
 
 export type CommunityVerdict = "halal" | "not_halal" | "unclear";
 
-/** Minimum independent reports before a community verdict is shown at all. */
-export const MIN_REPORTS_FOR_VERDICT = 3;
-
 export interface CommunitySummary {
   placeId: string;
   halal: number;
@@ -13,21 +10,27 @@ export interface CommunitySummary {
   total: number;
   /** Share of decided reports that say halal, in [0,1]; null when none decided. */
   halalRatio: number | null;
-  /** Derived verdict, or null when there are too few reports to decide. */
+  /** Derived verdict, or null when there are no decided reports. */
   verdict: VerdictValue | null;
   lastUpdated: string | null;
 }
 
-/** Derive a verdict from decided (halal/not-halal) report counts. */
+/**
+ * Derive a verdict from decided (halal/not-halal) report counts.
+ *
+ * There is no minimum sample: a single vote counts, and the verdict shifts as
+ * more votes arrive (ties are "unclear"). The UI always shows the raw counts and
+ * a disclaimer, so a lone vote reads as "1 confirmation", not a certification.
+ */
 export function deriveCommunityVerdict(
   halal: number,
   notHalal: number,
 ): VerdictValue | null {
   const decided = halal + notHalal;
-  if (decided < MIN_REPORTS_FOR_VERDICT) return null;
+  if (decided === 0) return null;
   const ratio = halal / decided;
-  if (ratio >= 0.66) return "halal";
-  if (ratio <= 0.34) return "not_halal";
+  if (ratio > 0.5) return "halal";
+  if (ratio < 0.5) return "not_halal";
   return "unclear";
 }
 

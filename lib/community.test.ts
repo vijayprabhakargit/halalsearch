@@ -1,28 +1,24 @@
 import { describe, expect, it } from "vitest";
-import {
-  buildSummary,
-  communityTone,
-  deriveCommunityVerdict,
-  MIN_REPORTS_FOR_VERDICT,
-} from "./community";
+import { buildSummary, communityTone, deriveCommunityVerdict } from "./community";
 
 describe("deriveCommunityVerdict", () => {
-  it("returns null below the minimum sample", () => {
-    expect(deriveCommunityVerdict(1, 0)).toBeNull();
-    expect(deriveCommunityVerdict(MIN_REPORTS_FOR_VERDICT - 1, 0)).toBeNull();
+  it("returns null with no decided reports", () => {
+    expect(deriveCommunityVerdict(0, 0)).toBeNull();
   });
 
-  it("returns halal for a strong majority", () => {
-    expect(deriveCommunityVerdict(3, 0)).toBe("halal");
+  it("treats a single vote as the verdict", () => {
+    expect(deriveCommunityVerdict(1, 0)).toBe("halal");
+    expect(deriveCommunityVerdict(0, 1)).toBe("not_halal");
+  });
+
+  it("follows the majority as votes arrive", () => {
     expect(deriveCommunityVerdict(2, 1)).toBe("halal");
-  });
-
-  it("returns not_halal for a strong negative majority", () => {
-    expect(deriveCommunityVerdict(0, 3)).toBe("not_halal");
     expect(deriveCommunityVerdict(1, 2)).toBe("not_halal");
+    expect(deriveCommunityVerdict(5, 1)).toBe("halal");
   });
 
-  it("returns unclear when split", () => {
+  it("returns unclear on a tie", () => {
+    expect(deriveCommunityVerdict(1, 1)).toBe("unclear");
     expect(deriveCommunityVerdict(2, 2)).toBe("unclear");
   });
 });

@@ -18,13 +18,8 @@ import type { CommunitySummary, CommunityVerdict } from "@/lib/community";
 import { getClientId } from "@/lib/clientId";
 import { haversineMeters } from "@/lib/distance";
 import { DEFAULT_CENTER } from "@/lib/mapConfig";
-import {
-  TONE_COLORS,
-  TONE_LABELS,
-  type MarkerTone,
-  type VerdictState,
-} from "@/lib/status";
-import { hasHalalSignal, type Place, type ValidateRequest } from "@/lib/types";
+import { TONE_COLORS, type VerdictState } from "@/lib/status";
+import type { Place, ValidateRequest } from "@/lib/types";
 
 function toRequest(place: Place): ValidateRequest {
   return {
@@ -37,7 +32,14 @@ function toRequest(place: Place): ValidateRequest {
   };
 }
 
-const LEGEND_ORDER: MarkerTone[] = ["halal", "likely", "not", "unclear", "tagged", "unknown"];
+type FilterKey = "halal" | "veg" | "community" | "unknown";
+
+const FILTERS: { key: FilterKey; label: string; color: string }[] = [
+  { key: "halal", label: "Halal (Google)", color: TONE_COLORS.halal },
+  { key: "veg", label: "Veg / Vegan", color: TONE_COLORS.tagged },
+  { key: "community", label: "Community", color: TONE_COLORS.likely },
+  { key: "unknown", label: "Not validated", color: TONE_COLORS.unknown },
+];
 
 export default function HalalSearchApp() {
   const { settings, update, loaded } = useSettings();
@@ -59,7 +61,12 @@ export default function HalalSearchApp() {
   const [nearbyLoading, setNearbyLoading] = useState(false);
   const [nearbyError, setNearbyError] = useState<string | null>(null);
   const [autoStatus, setAutoStatus] = useState<{ done: number; total: number } | null>(null);
-  const [onlyHalalTagged, setOnlyHalalTagged] = useState(false);
+  const [filters, setFilters] = useState({
+    halal: true,
+    veg: true,
+    community: true,
+    unknown: true,
+  });
   const [viewCenter, setViewCenter] = useState(center);
   const [locateNonce, setLocateNonce] = useState(0);
 
@@ -261,18 +268,22 @@ export default function HalalSearchApp() {
     const byId = new Map<string, Place>();
     for (const p of pinned) byId.set(p.placeId, p);
     for (const p of places) byId.set(p.placeId, p);
-    const list = [...byId.values()];
-    if (!onlyHalalTagged) return list;
-    return list.filter((p) => {
+    return [...byId.values()].filter((p) => {
       const st = states[p.placeId];
-      return (
-        hasHalalSignal(p) ||
-        p.source === "geocode" ||
-        st?.status === "ready" ||
-        st?.status === "loading"
-      );
+      // Always show searched and validated places.
+      if (p.source === "geocode" || st?.status === "ready" || st?.status === "loading") {
+        return true;
+      }
+      const community = communitySummaries[p.placeId]?.verdict;
+      const halal = p.halalTagged;
+      const veg = p.vegetarianTagged || p.veganTagged;
+      if (halal && filters.halal) return true;
+      if (veg && filters.veg) return true;
+      if (community && filters.community) return true;
+      if (!halal && !veg && !community) return filters.unknown;
+      return false;
     });
-  }, [pinned, places, onlyHalalTagged, states]);
+  }, [pinned, places, filters, communitySummaries, states]);
 
   const showSearchArea =
     haversineMeters(viewCenter.lat, viewCenter.lng, center.lat, center.lng) > 200;
@@ -301,6 +312,7 @@ export default function HalalSearchApp() {
         <div className="pointer-events-auto flex flex-col gap-2">
           <SearchBox
             bias={position ?? center}
+            nearby={places}
             onSelect={(place) => {
               setPinned((prev) =>
                 prev.some((p) => p.placeId === place.placeId)
@@ -377,29 +389,38 @@ export default function HalalSearchApp() {
         )}
 
         <div className="pointer-events-auto rounded-lg border border-slate-200 bg-white/95 p-3 text-xs shadow">
-          <label className="flex items-center gap-2 font-medium text-slate-700">
-            <input
-              type="checkbox"
-              checked={onlyHalalTagged}
-              onChange={(e) => setOnlyHalalTagged(e.target.checked)}
-            />
-            Only halal/veg tagged (OSM)
-          </label>
-          <p className="mt-1 text-[11px] text-slate-400">
+          <p className="text-[11px] font-semibold uppercase tracking-wide text-slate-500">
+            Show
+          </p>
+          <div className="mt-2 flex flex-wrap gap-1.5">
+            {FILTERS.map((f) => {
+              const active = filters[f.key];
+              return (
+                <button
+                  key={f.key}
+                  type="button"
+                  onClick={() =>
+                    setFilters((prev) => ({ ...prev, [f.key]: !prev[f.key] }))
+                  }
+                  className={`flex items-center gap-1.5 rounded-full border px-2.5 py-1 font-medium ${
+                    active
+                      ? "border-slate-900 bg-slate-900 text-white"
+                      : "border-slate-300 bg-white text-slate-600"
+                  }`}
+                >
+                  <span
+                    className="inline-block h-2.5 w-2.5 rounded-full border border-white"
+                    style={{ backgroundColor: f.color }}
+                  />
+                  {f.label}
+                </button>
+              );
+            })}
+          </div>
+          <p className="mt-2 text-[11px] text-slate-400">
             Pin icon = place type · colour &amp; badge = halal status
           </p>
-          <ul className="mt-2 space-y-1">
-            {LEGEND_ORDER.map((tone) => (
-              <li key={tone} className="flex items-center gap-2 text-slate-600">
-                <span
-                  className="inline-block h-3 w-3 rounded-full border border-white shadow"
-                  style={{ backgroundColor: TONE_COLORS[tone] }}
-                />
-                {TONE_LABELS[tone]}
-              </li>
-            ))}
-          </ul>
-          <p className="mt-2 text-[11px] text-slate-400">
+          <p className="mt-1 text-[11px] text-slate-400">
             {markers.length} place{markers.length === 1 ? "" : "s"} shown
           </p>
         </div>

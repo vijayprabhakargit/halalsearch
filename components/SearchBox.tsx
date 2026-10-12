@@ -3,19 +3,28 @@
 import { useEffect, useRef, useState } from "react";
 import { searchPlaces } from "@/lib/api";
 import { formatDistance, haversineMeters } from "@/lib/distance";
-import type { Place } from "@/lib/types";
+import { hasHalalSignal, type Place } from "@/lib/types";
 
 interface SearchBoxProps {
   bias: { lat: number; lng: number } | null;
+  nearby: Place[];
   onSelect: (place: Place) => void;
 }
 
-export default function SearchBox({ bias, onSelect }: SearchBoxProps) {
+function distanceTo(
+  place: Place,
+  bias: { lat: number; lng: number } | null,
+): number | null {
+  if (!bias) return null;
+  return haversineMeters(place.lat, place.lng, bias.lat, bias.lng);
+}
+
+export default function SearchBox({ bias, nearby, onSelect }: SearchBoxProps) {
   const [query, setQuery] = useState("");
   const [results, setResults] = useState<Place[]>([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [open, setOpen] = useState(false);
+  const [focused, setFocused] = useState(false);
   const timer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const seq = useRef(0);
 
@@ -31,7 +40,6 @@ export default function SearchBox({ bias, onSelect }: SearchBoxProps) {
         const list = await searchPlaces(trimmed, bias?.lat, bias?.lng);
         if (current !== seq.current) return;
         setResults(list);
-        setOpen(true);
       } catch (e) {
         if (current !== seq.current) return;
         setError((e as Error).message);
@@ -44,55 +52,95 @@ export default function SearchBox({ bias, onSelect }: SearchBoxProps) {
     };
   }, [query, bias?.lat, bias?.lng]);
 
+  const trimmed = query.trim();
+  const showingNearby = trimmed.length < 2;
+  const list = showingNearby
+    ? [...nearby].sort(
+        (a, b) => (distanceTo(a, bias) ?? Infinity) - (distanceTo(b, bias) ?? Infinity),
+      )
+    : results;
+  const open = focused && (list.length > 0 || Boolean(error));
+
+  const pick = (place: Place) => {
+    onSelect(place);
+    setQuery("");
+    setResults([]);
+    setFocused(false);
+  };
+
   return (
-    <div className="relative w-full max-w-md">
+    <div className="relative w-full">
+      <svg
+        aria-hidden="true"
+        viewBox="0 0 24 24"
+        className="pointer-events-none absolute left-4 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400"
+        fill="none"
+        stroke="currentColor"
+        strokeWidth="2"
+        strokeLinecap="round"
+      >
+        <circle cx="11" cy="11" r="7" />
+        <path d="m20 20-3.5-3.5" />
+      </svg>
       <input
         type="text"
         value={query}
-        placeholder="Search a restaurant or address…"
+        placeholder="Search a place, or pick from nearby…"
         onChange={(e) => setQuery(e.target.value)}
-        onFocus={() => results.length && setOpen(true)}
-        className="w-full rounded-md border border-slate-300 bg-white px-3 py-2 text-sm shadow focus:border-slate-400 focus:outline-none"
+        onFocus={() => setFocused(true)}
+        onBlur={() => window.setTimeout(() => setFocused(false), 150)}
+        className="w-full rounded-full border border-slate-300 bg-white py-3 pl-11 pr-4 text-sm shadow-lg focus:border-slate-400 focus:outline-none sm:py-3.5"
       />
       {loading && (
-        <span className="absolute right-3 top-2.5 text-xs text-slate-400">…</span>
+        <span className="absolute right-4 top-1/2 -translate-y-1/2 text-xs text-slate-400">
+          …
+        </span>
       )}
 
-      {query.trim().length >= 2 && open && (results.length > 0 || error) && (
-        <ul className="absolute z-20 mt-1 max-h-72 w-full overflow-auto rounded-md border border-slate-200 bg-white py-1 shadow-lg">
-          {error && <li className="px-3 py-2 text-xs text-red-600">{error}</li>}
-          {results.map((place) => (
-            <li key={place.placeId}>
-              <button
-                type="button"
-                onClick={() => {
-                  onSelect(place);
-                  setQuery("");
-                  setResults([]);
-                  setOpen(false);
-                }}
-                className="flex w-full items-center justify-between gap-2 px-3 py-2 text-left hover:bg-slate-50"
-              >
-                <span className="min-w-0">
-                  <span className="block truncate text-sm font-medium text-slate-800">
-                    {place.name}
-                  </span>
-                  {place.address && (
-                    <span className="block truncate text-xs text-slate-500">
-                      {place.address}
+      {open && (
+        <ul className="absolute z-20 mt-2 max-h-80 w-full overflow-auto rounded-2xl border border-slate-200 bg-white py-1 shadow-2xl">
+          {error && <li className="px-4 py-2 text-xs text-red-600">{error}</li>}
+          {!error && showingNearby && (
+            <li className="px-4 py-1.5 text-[11px] font-semibold uppercase tracking-wide text-slate-400">
+              Nearby
+            </li>
+          )}
+          {list.map((place) => {
+            const d = distanceTo(place, bias);
+            return (
+              <li key={place.placeId}>
+                <button
+                  type="button"
+                  onMouseDown={(e) => e.preventDefault()}
+                  onClick={() => pick(place)}
+                  className="flex w-full items-center justify-between gap-3 px-4 py-2 text-left hover:bg-slate-50"
+                >
+                  <span className="min-w-0">
+                    <span className="flex items-center gap-1.5">
+                      <span className="truncate text-sm font-medium text-slate-800">
+                        {place.name}
+                      </span>
+                      {hasHalalSignal(place) && (
+                        <span className="shrink-0 rounded bg-teal-100 px-1 py-0.5 text-[10px] text-teal-700">
+                          Halal/veg
+                        </span>
+                      )}
                     </span>
-                  )}
-                </span>
-                {bias && (
-                  <span className="shrink-0 text-xs text-slate-400">
-                    {formatDistance(
-                      haversineMeters(place.lat, place.lng, bias.lat, bias.lng),
+                    {place.address && (
+                      <span className="block truncate text-xs text-slate-500">
+                        {place.address}
+                      </span>
                     )}
                   </span>
-                )}
-              </button>
-            </li>
-          ))}
+                  {d != null && (
+                    <span className="shrink-0 text-xs text-slate-400">
+                      {formatDistance(d)}
+                    </span>
+                  )}
+                </button>
+              </li>
+            );
+          })}
         </ul>
       )}
     </div>

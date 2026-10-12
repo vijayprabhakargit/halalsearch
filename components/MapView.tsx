@@ -144,9 +144,12 @@ export default function MapView({
             >
               <button
                 type="button"
-                className="group flex cursor-pointer flex-col items-center p-1 focus:outline-none"
+                className="group relative flex cursor-pointer flex-col items-center p-1 focus:outline-none"
                 aria-label={`${place.name}, ${TONE_LABELS[tone]}`}
               >
+                {selected && (
+                  <span className="pointer-events-none absolute left-1/2 top-0 h-9 w-9 -translate-x-1/2 animate-ping rounded-full bg-blue-500/30" />
+                )}
                 <PlacePin
                   tone={tone}
                   category={cuisineCategory(place.cuisine)}
