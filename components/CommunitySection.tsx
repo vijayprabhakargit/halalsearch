@@ -31,10 +31,10 @@ function buildLabel(summary: CommunitySummary): {
     return { text: "Only \u201Cunclear\u201D votes so far", tone: null };
   }
   if (summary.verdict === "halal") {
-    return { text: "Halal \u2014 community-confirmed", tone: "halal" };
+    return { text: "Halal", tone: "halal" };
   }
   if (summary.verdict === "not_halal") {
-    return { text: "Not halal \u2014 community", tone: "not_halal" };
+    return { text: "Not halal", tone: "not_halal" };
   }
   if (decided === 1 && summary.halal === 1) {
     return { text: "1 confirmation (low confidence)", tone: null };
