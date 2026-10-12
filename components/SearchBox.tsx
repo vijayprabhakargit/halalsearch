@@ -3,7 +3,7 @@
 import { useEffect, useRef, useState } from "react";
 import { searchPlaces } from "@/lib/api";
 import { formatDistance, haversineMeters } from "@/lib/distance";
-import { hasHalalSignal, type Place } from "@/lib/types";
+import { hasHalalSignal, isFoodPlace, type Place } from "@/lib/types";
 
 interface SearchBoxProps {
   bias: { lat: number; lng: number } | null;
@@ -124,6 +124,11 @@ export default function SearchBox({ bias, nearby, onSelect }: SearchBoxProps) {
                       {hasHalalSignal(place) && (
                         <span className="shrink-0 rounded bg-teal-100 px-1 py-0.5 text-[10px] text-teal-700">
                           Halal/veg
+                        </span>
+                      )}
+                      {!showingNearby && !isFoodPlace(place) && (
+                        <span className="shrink-0 rounded bg-slate-100 px-1 py-0.5 text-[10px] text-slate-500">
+                          Location
                         </span>
                       )}
                     </span>

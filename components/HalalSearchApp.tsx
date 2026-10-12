@@ -1,7 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import MapView from "./MapView";
+import MapView, { type FocusTarget } from "./MapView";
 import SearchBox from "./SearchBox";
 import SettingsPanel from "./SettingsPanel";
 import PlaceCard from "./PlaceCard";
@@ -19,7 +19,7 @@ import { getClientId } from "@/lib/clientId";
 import { haversineMeters } from "@/lib/distance";
 import { DEFAULT_CENTER } from "@/lib/mapConfig";
 import { TONE_COLORS, type VerdictState } from "@/lib/status";
-import type { Place, ValidateRequest } from "@/lib/types";
+import { isFoodPlace, type Place, type ValidateRequest } from "@/lib/types";
 
 function toRequest(place: Place): ValidateRequest {
   return {
@@ -69,6 +69,14 @@ export default function HalalSearchApp() {
   });
   const [viewCenter, setViewCenter] = useState(center);
   const [locateNonce, setLocateNonce] = useState(0);
+  const [focus, setFocus] = useState<FocusTarget | null>(null);
+  const [searchOrigin, setSearchOrigin] = useState<{ lat: number; lng: number } | null>(
+    null,
+  );
+
+  const focusOn = useCallback((lat: number, lng: number) => {
+    setFocus((prev) => ({ lat, lng, nonce: (prev?.nonce ?? 0) + 1 }));
+  }, []);
 
   const statesRef = useRef<Record<string, VerdictState>>({});
   const lastFetchRef = useRef<{ lat: number; lng: number } | null>(null);
@@ -90,6 +98,7 @@ export default function HalalSearchApp() {
         const p = { lat: pos.coords.latitude, lng: pos.coords.longitude };
         setPosition(p);
         setCenter(p);
+        focusOn(p.lat, p.lng);
         setGeoResolved(true);
       },
       (err) => {
@@ -98,7 +107,7 @@ export default function HalalSearchApp() {
       },
       { enableHighAccuracy: true, timeout: 10000, maximumAge: 60000 },
     );
-  }, []);
+  }, [focusOn]);
 
   const loadSummaries = useCallback(async (list: Place[]) => {
     const ids = list.map((p) => p.placeId);
@@ -297,13 +306,14 @@ export default function HalalSearchApp() {
   return (
     <div className="relative h-screen w-screen overflow-hidden bg-slate-100">
       <MapView
-        center={center}
         places={markers}
         states={states}
         communitySummaries={communitySummaries}
         selectedId={selected?.placeId ?? null}
         userPosition={position}
         locateSignal={locateNonce}
+        focus={focus}
+        searchOrigin={searchOrigin}
         onSelect={handleSelect}
         onBoundsChanged={handleBoundsChanged}
       />
@@ -314,13 +324,18 @@ export default function HalalSearchApp() {
             bias={position ?? center}
             nearby={places}
             onSelect={(place) => {
-              setPinned((prev) =>
-                prev.some((p) => p.placeId === place.placeId)
-                  ? prev
-                  : [place, ...prev],
-              );
-              setSelected(place);
+              // Any location is searchable; only food places become place pins.
+              if (isFoodPlace(place)) {
+                setPinned((prev) =>
+                  prev.some((p) => p.placeId === place.placeId)
+                    ? prev
+                    : [place, ...prev],
+                );
+                setSelected(place);
+              }
               setCenter({ lat: place.lat, lng: place.lng });
+              setSearchOrigin({ lat: place.lat, lng: place.lng });
+              focusOn(place.lat, place.lng);
             }}
           />
           <button
@@ -352,7 +367,10 @@ export default function HalalSearchApp() {
       {showSearchArea && (
         <button
           type="button"
-          onClick={() => setCenter(viewCenter)}
+          onClick={() => {
+            setCenter(viewCenter);
+            setSearchOrigin(viewCenter);
+          }}
           className="absolute left-1/2 top-3 z-10 -translate-x-1/2 rounded-full border border-slate-300 bg-white px-4 py-2 text-sm font-medium text-slate-700 shadow-lg hover:bg-slate-50"
         >
           Search this area

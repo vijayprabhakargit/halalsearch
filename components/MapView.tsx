@@ -17,49 +17,56 @@ import {
   GOOGLE_MAPS_MAP_ID,
 } from "@/lib/mapConfig";
 
+interface LatLng {
+  lat: number;
+  lng: number;
+}
+
+export interface FocusTarget extends LatLng {
+  nonce: number;
+}
+
 interface MapViewProps {
-  center: { lat: number; lng: number };
   places: Place[];
   states: Record<string, VerdictState>;
   communitySummaries: Record<string, CommunitySummary>;
   selectedId: string | null;
-  userPosition: { lat: number; lng: number } | null;
+  userPosition: LatLng | null;
   locateSignal: number;
+  focus: FocusTarget | null;
+  searchOrigin: LatLng | null;
   onSelect: (place: Place) => void;
-  onBoundsChanged: (center: { lat: number; lng: number }) => void;
+  onBoundsChanged: (center: LatLng) => void;
 }
 
 interface ControllerProps {
-  center: { lat: number; lng: number };
+  focus: FocusTarget | null;
   locateSignal: number;
-  userPosition: { lat: number; lng: number } | null;
-  onBoundsChanged: (center: { lat: number; lng: number }) => void;
+  userPosition: LatLng | null;
+  onBoundsChanged: (center: LatLng) => void;
 }
 
-/** Imperative map behaviour: recenter, locate, and report the viewport center. */
+/** Imperative map behaviour: fly on explicit actions, report the viewport center. */
 function MapController({
-  center,
+  focus,
   locateSignal,
   userPosition,
   onBoundsChanged,
 }: ControllerProps) {
   const map = useMap();
-  const lastCenter = useRef("");
   const userRef = useRef(userPosition);
-  const { lat, lng } = center;
 
   useEffect(() => {
     userRef.current = userPosition;
   }, [userPosition]);
 
+  // Only recenter when the app explicitly asks (search select / geolocate),
+  // never on pan-driven reloads — otherwise the map fights the user's gestures.
   useEffect(() => {
-    if (!map) return;
-    const key = `${lat.toFixed(4)},${lng.toFixed(4)}`;
-    if (lastCenter.current === key) return;
-    lastCenter.current = key;
-    map.panTo({ lat, lng });
+    if (!map || !focus) return;
+    map.panTo({ lat: focus.lat, lng: focus.lng });
     map.setZoom(15);
-  }, [map, lat, lng]);
+  }, [map, focus]);
 
   useEffect(() => {
     if (!map || !locateSignal) return;
@@ -70,7 +77,6 @@ function MapController({
     }
   }, [map, locateSignal]);
 
-  // Report the settled viewport center (used for "Search this area").
   useEffect(() => {
     if (!map) return;
     const listener = map.addListener("idle", () => {
@@ -84,13 +90,14 @@ function MapController({
 }
 
 export default function MapView({
-  center,
   places,
   states,
   communitySummaries,
   selectedId,
   userPosition,
   locateSignal,
+  focus,
+  searchOrigin,
   onSelect,
   onBoundsChanged,
 }: MapViewProps) {
@@ -107,18 +114,30 @@ export default function MapView({
         style={{ width: "100%", height: "100%" }}
       >
         <MapController
-          center={center}
+          focus={focus}
           locateSignal={locateSignal}
           userPosition={userPosition}
           onBoundsChanged={onBoundsChanged}
         />
 
+        {/* Red pin: where the current nearby search is centred (like Google). */}
+        {searchOrigin && (
+          <AdvancedMarker position={searchOrigin} zIndex={400} title="Search origin">
+            <svg viewBox="0 0 28 36" width={30} height={38} className="drop-shadow-md">
+              <path
+                d="M14 1C7.4 1 2 6.4 2 13c0 8 12 22 12 22s12-14 12-22C26 6.4 20.6 1 14 1z"
+                fill="#dc2626"
+                stroke="white"
+                strokeWidth="2"
+                strokeLinejoin="round"
+              />
+              <circle cx="14" cy="13" r="4.5" fill="white" />
+            </svg>
+          </AdvancedMarker>
+        )}
+
         {userPosition && (
-          <AdvancedMarker
-            position={userPosition}
-            zIndex={500}
-            title="Your location"
-          >
+          <AdvancedMarker position={userPosition} zIndex={500} title="Your location">
             <span className="relative flex h-8 w-8 items-center justify-center">
               <span className="absolute h-8 w-8 rounded-full bg-blue-500/20" />
               <span className="absolute h-5 w-5 animate-ping rounded-full bg-blue-500/30" />

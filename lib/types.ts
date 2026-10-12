@@ -31,6 +31,15 @@ export function hasHalalSignal(place: Place): boolean {
   return place.halalTagged || place.vegetarianTagged || place.veganTagged;
 }
 
+const FOOD_TYPE_PATTERN =
+  /restaurant|cafe|coffee|bakery|food|deli|bistro|diner|eatery|kitchen|grill|buffet|canteen|cafeteria|snack|juice|tea_house|ice_cream|dessert|donut|bagel|sandwich|pizza|bar|pub|brewery|wine_bar|acai|chocolate/;
+
+/** Heuristic: is this a food/drink venue, or just a place (city, station, shop)? */
+export function isFoodPlace(place: Place): boolean {
+  if (place.halalTagged || place.vegetarianTagged || place.veganTagged) return true;
+  return place.cuisine != null && FOOD_TYPE_PATTERN.test(place.cuisine);
+}
+
 export type VerdictValue = "halal" | "likely_halal" | "not_halal" | "unclear";
 
 export interface Source {
