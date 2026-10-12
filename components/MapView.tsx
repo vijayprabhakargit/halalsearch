@@ -5,6 +5,7 @@ import {
   APIProvider,
   AdvancedMarker,
   Map,
+  Pin,
   useMap,
 } from "@vis.gl/react-google-maps";
 import PlacePin, { cuisineCategory } from "./PlacePin";
@@ -139,10 +140,15 @@ export default function MapView({
           onMapClick={onMapClick}
         />
 
-        {/* Red ring: the point the current nearby search is centred on. */}
+        {/* Google-style red pin at the point the nearby search is centred on. */}
         {searchOrigin && (
           <AdvancedMarker position={searchOrigin} zIndex={1500} title="Search origin">
-            <span className="pointer-events-none block h-10 w-10 translate-y-1/2 rounded-full border-[3px] border-red-500 shadow-[0_0_0_3px_rgba(255,255,255,0.7)]" />
+            <Pin
+              background="#dc2626"
+              borderColor="#ffffff"
+              glyphColor="#ffffff"
+              scale={1.1}
+            />
           </AdvancedMarker>
         )}
 
