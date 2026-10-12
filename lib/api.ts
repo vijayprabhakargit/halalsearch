@@ -116,13 +116,6 @@ export interface ReportPayload {
   placeId: string;
   verdict: CommunityVerdict;
   note?: string;
-  clientId?: string;
-  name?: string;
-  lat?: number;
-  lng?: number;
-  address?: string;
-  cuisine?: string;
-  source?: string;
 }
 
 export async function submitReport(payload: ReportPayload): Promise<CommunitySummary> {

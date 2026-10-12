@@ -162,21 +162,12 @@ To stay within the ToS:
 Minimal on purpose — only what is needed.
 
 ```sql
-CREATE TABLE places (
-  place_id TEXT PRIMARY KEY,   -- OSM id, e.g. "node/12345"
-  name TEXT NOT NULL,
-  lat REAL NOT NULL,
-  lng REAL NOT NULL,
-  address TEXT,
-  cuisine TEXT,
-  source TEXT,                 -- 'osm' | 'tile' | 'geocode'
-  created_at TEXT NOT NULL DEFAULT (datetime('now')),
-  updated_at TEXT NOT NULL DEFAULT (datetime('now'))
-);
-
+-- Community contributions only. We deliberately store NO Google place data
+-- (name/address/coords): per the Places terms only place_id may be kept
+-- long-term. Place details are fetched live from Google and not persisted.
 CREATE TABLE reports (
   id INTEGER PRIMARY KEY AUTOINCREMENT,
-  place_id TEXT NOT NULL,
+  place_id TEXT NOT NULL,      -- Google place_id — the join key
   verdict TEXT NOT NULL,       -- 'halal' | 'not_halal' | 'unclear'
   note TEXT,
   client_id TEXT,              -- anonymous contributor id (no accounts yet)
@@ -184,10 +175,10 @@ CREATE TABLE reports (
 );
 ```
 
-Score: aggregate `reports` per place. A community verdict is only shown once
-there are enough independent reports (`MIN_REPORTS_FOR_VERDICT = 3`); otherwise
-the summary shows raw counts and no verdict. This avoids over-trusting a single
-contribution.
+Score: aggregate `reports` per place into a summary. Verdicts are ratio-based
+and asymmetric — downgrades (`not_halal`) apply fast; `halal` needs a simple
+majority by default, or ≥2 contributors & ≥0.66 when `COMMUNITY_STRICT_HALAL=1`.
+One report per identity per place; bursts are rate-capped.
 
 ---
 
@@ -224,6 +215,5 @@ Migrated (see 3.2). Notes from the migration, correcting the earlier estimate:
   area (Places data may be cached ≤30 days) plus an in-memory browser-session
   cache for nearby/search/details, so repeat views don't re-bill.
 - Only `place_id` may be stored long-term; other Places data is cached ≤30 days.
-  We currently keep Google name/address/coords in `places` indefinitely — a ToS
-  issue to fix (store `place_id` + our own fields; treat Google fields as a
-  ≤30-day cache).
+  We store **only `place_id`** — the community `reports` are keyed by it — and do
+  not persist Google name/address/coords (they're fetched live).

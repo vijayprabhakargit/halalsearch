@@ -239,12 +239,6 @@ export default function HalalSearchApp() {
         placeId: place.placeId,
         verdict,
         note: note || undefined,
-        name: place.name,
-        lat: place.lat,
-        lng: place.lng,
-        address: place.address,
-        cuisine: place.cuisine,
-        source: place.source,
       });
       setCommunitySummaries((prev) => mergeSummaries(prev, summary));
     },

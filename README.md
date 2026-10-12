@@ -156,9 +156,9 @@ GEMINI_MOCK=1
 
 Users can add their **own** halal assessment (Halal / Not halal / Unclear + an
 optional note) from the place card. These are stored in a lightweight libSQL
-database (`places` + `reports`) and aggregated into a summary; a community
-verdict is only shown once there are at least 3 reports. Stored community data is
-shown first and is the primary source of halal status.
+database (a `reports` table keyed by Google `place_id`) and aggregated into a
+summary — no Google place data (name/address/coords) is persisted. Stored
+community data is the primary source of halal status.
 
 This is **user-generated content only** — AI results are never stored (see
 `docs/DESIGN.md` for the reasoning and the legal constraints). The community

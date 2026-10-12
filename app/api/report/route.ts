@@ -11,13 +11,6 @@ interface ReportBody {
   placeId?: string;
   verdict?: string;
   note?: string;
-  clientId?: string;
-  name?: string;
-  lat?: number;
-  lng?: number;
-  address?: string;
-  cuisine?: string;
-  source?: string;
 }
 
 /**
@@ -59,12 +52,6 @@ export async function POST(request: NextRequest) {
       verdict,
       note: body.note?.slice(0, MAX_NOTE),
       clientId,
-      name: body.name,
-      lat: typeof body.lat === "number" ? body.lat : undefined,
-      lng: typeof body.lng === "number" ? body.lng : undefined,
-      address: body.address,
-      cuisine: body.cuisine,
-      source: body.source,
     });
     const summary = await getSummary(placeId);
     const response = NextResponse.json({ summary });

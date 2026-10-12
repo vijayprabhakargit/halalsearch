@@ -47,19 +47,9 @@ async function ensureSchema(): Promise<void> {
   if (!schemaReady) {
     const c = getClient();
     schemaReady = (async () => {
-      await c.execute(`
-        CREATE TABLE IF NOT EXISTS places (
-          place_id TEXT PRIMARY KEY,
-          name TEXT NOT NULL,
-          lat REAL NOT NULL,
-          lng REAL NOT NULL,
-          address TEXT,
-          cuisine TEXT,
-          source TEXT,
-          created_at TEXT NOT NULL DEFAULT (datetime('now')),
-          updated_at TEXT NOT NULL DEFAULT (datetime('now'))
-        )
-      `);
+      // We intentionally do NOT store Google place data (name/address/coords):
+      // community data is keyed by place_id only. Drop the old table if present.
+      await c.execute(`DROP TABLE IF EXISTS places`);
       await c.execute(`
         CREATE TABLE IF NOT EXISTS reports (
           id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -85,53 +75,11 @@ async function ensureSchema(): Promise<void> {
   return schemaReady;
 }
 
-export interface PlaceInput {
-  placeId: string;
-  name: string;
-  lat: number;
-  lng: number;
-  address?: string;
-  cuisine?: string;
-  source?: string;
-}
-
-export async function upsertPlace(place: PlaceInput): Promise<void> {
-  await ensureSchema();
-  await getClient().execute({
-    sql: `INSERT INTO places (place_id, name, lat, lng, address, cuisine, source, updated_at)
-          VALUES (?, ?, ?, ?, ?, ?, ?, datetime('now'))
-          ON CONFLICT(place_id) DO UPDATE SET
-            name = excluded.name,
-            lat = excluded.lat,
-            lng = excluded.lng,
-            address = excluded.address,
-            cuisine = excluded.cuisine,
-            source = excluded.source,
-            updated_at = datetime('now')`,
-    args: [
-      place.placeId,
-      place.name,
-      place.lat,
-      place.lng,
-      place.address ?? null,
-      place.cuisine ?? null,
-      place.source ?? null,
-    ],
-  });
-}
-
 export interface ReportInput {
   placeId: string;
   verdict: CommunityVerdict;
   note?: string;
   clientId?: string;
-  /** Optional place details to upsert alongside the report. */
-  name?: string;
-  lat?: number;
-  lng?: number;
-  address?: string;
-  cuisine?: string;
-  source?: string;
 }
 
 /** Thrown when a place has received too many reports in a short window. */
@@ -144,18 +92,6 @@ export async function addReport(report: ReportInput): Promise<void> {
   await ensureSchema();
   const client = getClient();
   const clientId = report.clientId ?? randomUUID();
-
-  if (report.name && report.lat != null && report.lng != null) {
-    await upsertPlace({
-      placeId: report.placeId,
-      name: report.name,
-      lat: report.lat,
-      lng: report.lng,
-      address: report.address,
-      cuisine: report.cuisine,
-      source: report.source,
-    });
-  }
 
   // Cap bursts of fresh reports on the same place (DB-counted, so it holds
   // across instances). Re-voting by the same identity updates the existing row
