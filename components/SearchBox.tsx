@@ -1,15 +1,25 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
-import { searchPlaces } from "@/lib/api";
+import { fetchSummaries, searchPlaces } from "@/lib/api";
+import type { CommunitySummary } from "@/lib/community";
 import { formatDistance, haversineMeters } from "@/lib/distance";
-import { hasHalalSignal, isFoodPlace, type Place } from "@/lib/types";
+import { hasHalalSignal, isFoodPlace, type Place, type VerdictValue } from "@/lib/types";
 
 interface SearchBoxProps {
   bias: { lat: number; lng: number } | null;
   nearby: Place[];
+  communitySummaries: Record<string, CommunitySummary>;
+  onSummaries: (summaries: Record<string, CommunitySummary>) => void;
   onSelect: (place: Place) => void;
 }
+
+const COMMUNITY_CHIP: Record<VerdictValue, { label: string; className: string }> = {
+  halal: { label: "Halal", className: "bg-green-100 text-green-700" },
+  likely_halal: { label: "Likely halal", className: "bg-green-50 text-green-700" },
+  not_halal: { label: "Not halal", className: "bg-red-100 text-red-700" },
+  unclear: { label: "Unclear", className: "bg-amber-100 text-amber-700" },
+};
 
 function distanceTo(
   place: Place,
@@ -19,7 +29,13 @@ function distanceTo(
   return haversineMeters(place.lat, place.lng, bias.lat, bias.lng);
 }
 
-export default function SearchBox({ bias, nearby, onSelect }: SearchBoxProps) {
+export default function SearchBox({
+  bias,
+  nearby,
+  communitySummaries,
+  onSummaries,
+  onSelect,
+}: SearchBoxProps) {
   const [query, setQuery] = useState("");
   const [results, setResults] = useState<Place[]>([]);
   const [loading, setLoading] = useState(false);
@@ -40,6 +56,17 @@ export default function SearchBox({ bias, nearby, onSelect }: SearchBoxProps) {
         const list = await searchPlaces(trimmed, bias?.lat, bias?.lng);
         if (current !== seq.current) return;
         setResults(list);
+        // Pull community verdicts for the results so they can be shown too.
+        if (list.length > 0) {
+          const ids = list.map((p) => p.placeId);
+          void fetchSummaries(ids)
+            .then((summaries) => {
+              if (current === seq.current) onSummaries(summaries);
+            })
+            .catch(() => {
+              // community data is best-effort
+            });
+        }
       } catch (e) {
         if (current !== seq.current) return;
         setError((e as Error).message);
@@ -50,7 +77,7 @@ export default function SearchBox({ bias, nearby, onSelect }: SearchBoxProps) {
     return () => {
       if (timer.current) clearTimeout(timer.current);
     };
-  }, [query, bias?.lat, bias?.lng]);
+  }, [query, bias?.lat, bias?.lng, onSummaries]);
 
   const trimmed = query.trim();
   const showingNearby = trimmed.length < 2;
@@ -108,6 +135,8 @@ export default function SearchBox({ bias, nearby, onSelect }: SearchBoxProps) {
           )}
           {list.map((place) => {
             const d = distanceTo(place, bias);
+            const communityVerdict = communitySummaries[place.placeId]?.verdict ?? null;
+            const googleTag = hasHalalSignal(place);
             return (
               <li key={place.placeId}>
                 <button
@@ -121,11 +150,19 @@ export default function SearchBox({ bias, nearby, onSelect }: SearchBoxProps) {
                       <span className="truncate text-sm font-medium text-slate-800">
                         {place.name}
                       </span>
-                      {hasHalalSignal(place) && (
+                      {googleTag ? (
                         <span className="shrink-0 rounded bg-teal-100 px-1 py-0.5 text-[10px] text-teal-700">
                           Halal/veg
                         </span>
-                      )}
+                      ) : communityVerdict ? (
+                        <span
+                          className={`shrink-0 rounded px-1 py-0.5 text-[10px] ${
+                            COMMUNITY_CHIP[communityVerdict].className
+                          }`}
+                        >
+                          {COMMUNITY_CHIP[communityVerdict].label}
+                        </span>
+                      ) : null}
                       {!showingNearby && !isFoodPlace(place) && (
                         <span className="shrink-0 rounded bg-slate-100 px-1 py-0.5 text-[10px] text-slate-500">
                           Location

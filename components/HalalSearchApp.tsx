@@ -131,6 +131,13 @@ export default function HalalSearchApp() {
     }
   }, []);
 
+  const handleSummaries = useCallback(
+    (summaries: Record<string, CommunitySummary>) => {
+      setCommunitySummaries((prev) => mergeSummaries(prev, Object.values(summaries)));
+    },
+    [],
+  );
+
   const loadNearby = useCallback(
     async (lat: number, lng: number) => {
       lastFetchRef.current = { lat, lng };
@@ -333,6 +340,8 @@ export default function HalalSearchApp() {
           <SearchBox
             bias={position ?? center}
             nearby={places}
+            communitySummaries={communitySummaries}
+            onSummaries={handleSummaries}
             onSelect={(place) => {
               // Any location is searchable; only food places become place pins.
               if (isFoodPlace(place)) {
