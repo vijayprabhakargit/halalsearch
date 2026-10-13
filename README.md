@@ -212,6 +212,16 @@ docs/
 
 ## Roadmap
 
+- **Brand & ingredient check** (new): given a food brand (e.g. Cadbury, KitKat) or
+  an ingredient (gelatin, E-numbers, alcohol, …), confirm whether it's halal.
+  Recipes/ownership vary by region, so answers must be region-aware and cited.
+- **Barcode scan** (new): scan a retail product's barcode and confirm if it's
+  halal — [Open Food Facts](https://world.openfoodfacts.org/) (free, open) gives
+  ingredients and labels by barcode; combine with the AI/heuristic check. Needs a
+  camera/barcode UI (mobile-first).
+- **Halal certification** (new): research how certification works (certifiers such
+  as HMC, HFA, IFANCA, JAKIM, MUI, …) and add a certification registry — a
+  verified certifier link/certificate is authoritative and not subject to votes.
 - **Tiered halal status** (next): show each signal with its source and
   confidence — Google Maps tag, community consensus (visit-weighted), and
   optional certification link.

@@ -211,6 +211,21 @@ One report per identity per place; bursts are rate-capped.
   model or a search provider whose terms permit storage — a quality/legal trade
   we deliberately avoid for a halal determination.
 
+### Future: product breadth (roadmap)
+- **Brand & ingredient check** — given a brand (e.g. Cadbury, KitKat) or an
+  ingredient (gelatin, E-numbers, alcohol, …), confirm whether it's halal.
+  Region-aware and cited (recipes/ownership differ by country). Reuses the Gemini
+  grounding check with a different prompt; optionally a curated ingredient/E-code
+  reference.
+- **Barcode scan** — scan a retail product's barcode → look up the product and
+  confirm halal. [Open Food Facts](https://world.openfoodfacts.org/) is free and
+  open, and returns ingredients, additives and labels by barcode; combine with the
+  AI/heuristic check. Needs a camera/barcode capture UI (mobile-first).
+- **Halal certification** — research certification bodies (e.g. HMC, HFA, IFANCA,
+  JAKIM, MUI, …) and add a **certification registry**: a verified certifier
+  link/certificate is authoritative and not subject to votes (a strong "Certified"
+  tier). Requires maintaining the body list and a way to verify certificates.
+
 ### Done: Google Maps migration
 Migrated (see 3.2). Notes from the migration, correcting the earlier estimate:
 
