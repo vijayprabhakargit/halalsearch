@@ -160,9 +160,11 @@ export default function MapView({
           onMapClick={onMapClick}
         />
 
-        {/* Google-style red pin at the point the nearby search is centred on. */}
+        {/* Google-style red pin at the point the nearby search is centred on.
+            Kept BELOW the place pins so it never hides a place's status colour
+            when a search result sits exactly on the search origin. */}
         {searchOrigin && (
-          <AdvancedMarker position={searchOrigin} zIndex={1500} title="Search origin">
+          <AdvancedMarker position={searchOrigin} zIndex={0} title="Search origin">
             <Pin
               background="#dc2626"
               borderColor="#ffffff"
