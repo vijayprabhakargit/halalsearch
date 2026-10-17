@@ -5,7 +5,7 @@ restaurants, highlights ones already labelled halal / vegetarian / vegan, and
 lets users mark places they know so the next person benefits. Assessments are
 stored, so the directory gets more useful over time.
 
-**Live:** https://halalsearch.vercel.app/
+**Live:** https://halalsearch.net/ (Vercel alias: https://halalsearch.vercel.app/)
 
 > ⚠️ Halal status shown here is based on public data and community reports — not a
 > religious certification. Always verify with the establishment.
@@ -106,7 +106,7 @@ Set these in `.env.local`:
 | `NEXT_PUBLIC_GOOGLE_MAPS_MAP_ID` | No | Google Maps Map ID for advanced markers (defaults to `DEMO_MAP_ID`) |
 | `NEXT_PUBLIC_ENABLE_GOOGLE_CSE` | No | `1` = show the embedded Google Programmable Search Engine pane (off by default) |
 | `NEXT_PUBLIC_GOOGLE_CSE_CX` | No | Google Programmable Search Engine id (`cx`) used by that pane |
-| `NEXT_PUBLIC_DONATE_URL` | No | Donation link shown next to Settings (hidden if unset) |
+| `NEXT_PUBLIC_DONATE_URL` | No | Support/donation link shown next to Settings and in the info panel (defaults to the project's Buy Me a Coffee link) |
 | `TURSO_DATABASE_URL` | No | Community DB URL (defaults to `file:./data/halal.db`); set to a Turso URL in production |
 | `TURSO_AUTH_TOKEN` | No | Turso auth token (only for a remote DB) |
 | `NEXT_PUBLIC_GOOGLE_MAPS_API_KEY` | No (Google Maps migration) | Browser key, HTTP-referrer restricted |
@@ -133,8 +133,10 @@ GEMINI_MOCK=1
 ## Cost & open-source notes
 
 - **This is an open-source, self-funded project.** Hosting (Vercel), the database
-  (Turso), and any AI usage are borne by the maintainer. Donations help cover
-  these — set `NEXT_PUBLIC_DONATE_URL` to show a Donate button next to Settings.
+  (Turso), and any AI usage are borne by the maintainer. Support is welcome via
+  **Buy Me a Coffee: <https://buymeacoffee.com/odvprabhakk>** (also shown in the
+  in-app **ⓘ** info panel). `NEXT_PUBLIC_DONATE_URL` overrides the link and shows
+  a Donate button next to Settings; it defaults to the Buy Me a Coffee link above.
 - **The AI check is off by default**, so the app runs at effectively no API cost.
   When enabled, Gemini grounding is billed per executed search (5,000/month free,
   then ~$14/1,000) and auto-validate is capped (default 25); results are cached in
@@ -233,7 +235,7 @@ docs/
 
 ## Deployment
 
-Live: **https://halalsearch.vercel.app/** — deployed on Vercel with a Turso
+Live: **https://halalsearch.net/** — deployed on Vercel with a Turso
 libSQL database for the community layer.
 
 Import the repo into Vercel and set `TURSO_DATABASE_URL`, `TURSO_AUTH_TOKEN`,

@@ -101,7 +101,11 @@ flagged "Not web-verified". The 5,000 free grounded searches/month still apply.
   and capped. Consider a global daily Gemini-search budget/counter.
 - **Moderation:** community reports are anonymous and unmoderated — add
   flagging/abuse handling before promotion.
-- **Custom domain** (HTTPS is automatic on Vercel).
+- **Custom domain** — the live site uses **https://halalsearch.net** (registered
+  via Vercel; HTTPS/SSL is automatic). Add it under Project → Settings → Domains
+  and point DNS (Vercel nameservers `ns1.vercel-dns.com` / `ns2.vercel-dns.com`,
+  or an `A` record to `76.76.21.21` for the apex and `CNAME` `cname.vercel-dns.com`
+  for `www`).
 
 ---
 

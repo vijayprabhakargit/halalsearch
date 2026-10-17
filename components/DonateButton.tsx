@@ -1,13 +1,15 @@
 "use client";
 
 /**
- * Optional donation link, shown next to Settings. Configure with
- * NEXT_PUBLIC_DONATE_URL (e.g. GitHub Sponsors, Ko-fi, Buy Me a Coffee).
- * Hidden when unset.
+ * Support/donation link, shown next to Settings. Configure with
+ * NEXT_PUBLIC_DONATE_URL (e.g. GitHub Sponsors, Ko-fi, Buy Me a Coffee);
+ * defaults to the project's Buy Me a Coffee page.
  */
+const SUPPORT_URL =
+  process.env.NEXT_PUBLIC_DONATE_URL ?? "https://buymeacoffee.com/odvprabhakk";
+
 export default function DonateButton() {
-  const url = process.env.NEXT_PUBLIC_DONATE_URL;
-  if (!url) return null;
+  const url = SUPPORT_URL;
   return (
     <a
       href={url}

@@ -3,6 +3,10 @@
 import { useState } from "react";
 import { TONE_COLORS } from "@/lib/status";
 
+/** Support/contribute link. Overridable with NEXT_PUBLIC_DONATE_URL. */
+const SUPPORT_URL =
+  process.env.NEXT_PUBLIC_DONATE_URL ?? "https://buymeacoffee.com/odvprabhakk";
+
 const LEGEND: { color: string; label: string; hint: string }[] = [
   { color: TONE_COLORS.halal, label: "Halal", hint: "Confirmed by Google's label or the community" },
   { color: TONE_COLORS.likely, label: "Likely halal", hint: "Leaning halal" },
@@ -146,6 +150,40 @@ export default function HelpPanel() {
                 Halal status is an <strong>estimate</strong> from public data and
                 community reports — <strong>not a religious certification</strong>.
                 Always verify with the establishment.
+              </section>
+
+              <section>
+                <h3 className="mb-1 text-xs font-semibold uppercase tracking-wide text-slate-500">
+                  Support &amp; contribute
+                </h3>
+                <p className="mb-3">
+                  HalalSearch is a free, community-driven, self-funded project. You
+                  can help in two ways: <strong>contribute</strong> by adding
+                  assessments for places you know (it&apos;s what makes the map
+                  useful), or <strong>support</strong> the hosting and API costs.
+                </p>
+                <a
+                  href={SUPPORT_URL}
+                  target="_blank"
+                  rel="noreferrer noopener"
+                  className="inline-flex items-center gap-2 rounded-md bg-amber-400 px-3 py-2 text-sm font-semibold text-amber-950 shadow hover:bg-amber-300"
+                >
+                  <svg
+                    aria-hidden="true"
+                    viewBox="0 0 24 24"
+                    className="h-4 w-4"
+                    fill="none"
+                    stroke="currentColor"
+                    strokeWidth="2"
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                  >
+                    <path d="M17 8h1a3 3 0 0 1 0 6h-1" />
+                    <path d="M3 8h14v6a4 4 0 0 1-4 4H7a4 4 0 0 1-4-4V8Z" />
+                    <path d="M6 2v2M10 2v2M14 2v2" />
+                  </svg>
+                  Buy me a coffee
+                </a>
               </section>
             </div>
           </div>
