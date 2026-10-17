@@ -3,15 +3,8 @@
 import { useState } from "react";
 import Image from "next/image";
 import BrandIcon from "./BrandIcon";
+import { SUPPORT_URL, UPI_ID, UPI_LINK } from "@/lib/support";
 import { TONE_COLORS } from "@/lib/status";
-
-/** Support/contribute link. Overridable with NEXT_PUBLIC_DONATE_URL. */
-const SUPPORT_URL =
-  process.env.NEXT_PUBLIC_DONATE_URL ?? "https://buymeacoffee.com/odvprabhakk";
-
-/** UPI (India) — deep link + QR (public/upi-qr.png encodes this same payload). */
-const UPI_ID = "8500306433@ybl";
-const UPI_LINK = `upi://pay?pa=${UPI_ID}&pn=HalalSearch&cu=INR`;
 
 const LEGEND: { color: string; label: string; hint: string }[] = [
   { color: TONE_COLORS.halal, label: "Halal", hint: "Confirmed by Google's label or the community" },
