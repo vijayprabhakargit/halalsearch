@@ -2,7 +2,7 @@
 
 import { useEffect, useRef, useState } from "react";
 import Image from "next/image";
-import { SUPPORT_URL, UPI_ID, UPI_LINK } from "@/lib/support";
+import { DONATE_ENABLED, SUPPORT_URL, UPI_ID, UPI_LINK } from "@/lib/support";
 
 /**
  * Support menu, shown next to Settings: Buy Me a Coffee (international) and
@@ -30,6 +30,8 @@ export default function DonateButton() {
       document.removeEventListener("keydown", onKey);
     };
   }, [open]);
+
+  if (!DONATE_ENABLED) return null;
 
   return (
     <div ref={ref} className="relative hidden sm:block">
