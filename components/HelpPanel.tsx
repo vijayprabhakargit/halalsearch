@@ -1,11 +1,17 @@
 "use client";
 
 import { useState } from "react";
+import Image from "next/image";
+import BrandIcon from "./BrandIcon";
 import { TONE_COLORS } from "@/lib/status";
 
 /** Support/contribute link. Overridable with NEXT_PUBLIC_DONATE_URL. */
 const SUPPORT_URL =
   process.env.NEXT_PUBLIC_DONATE_URL ?? "https://buymeacoffee.com/odvprabhakk";
+
+/** UPI (India) — deep link + QR (public/upi-qr.png encodes this same payload). */
+const UPI_ID = "8500306433@ybl";
+const UPI_LINK = `upi://pay?pa=${UPI_ID}&pn=HalalSearch&cu=INR`;
 
 const LEGEND: { color: string; label: string; hint: string }[] = [
   { color: TONE_COLORS.halal, label: "Halal", hint: "Confirmed by Google's label or the community" },
@@ -53,9 +59,12 @@ export default function HelpPanel() {
             onClick={(e) => e.stopPropagation()}
           >
             <div className="flex items-center justify-between border-b border-slate-100 p-4">
-              <h2 className="text-base font-semibold text-slate-900">
-                How to use HalalSearch
-              </h2>
+              <div className="flex items-center gap-2">
+                <BrandIcon className="h-7 w-7" />
+                <h2 className="text-base font-semibold text-slate-900">
+                  How to use HalalSearch
+                </h2>
+              </div>
               <button
                 type="button"
                 onClick={() => setOpen(false)}
@@ -162,28 +171,58 @@ export default function HelpPanel() {
                   assessments for places you know (it&apos;s what makes the map
                   useful), or <strong>support</strong> the hosting and API costs.
                 </p>
-                <a
-                  href={SUPPORT_URL}
-                  target="_blank"
-                  rel="noreferrer noopener"
-                  className="inline-flex items-center gap-2 rounded-md bg-amber-400 px-3 py-2 text-sm font-semibold text-amber-950 shadow hover:bg-amber-300"
-                >
-                  <svg
-                    aria-hidden="true"
-                    viewBox="0 0 24 24"
-                    className="h-4 w-4"
-                    fill="none"
-                    stroke="currentColor"
-                    strokeWidth="2"
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
+                <div className="mb-3 flex flex-wrap items-center gap-2">
+                  <a
+                    href={SUPPORT_URL}
+                    target="_blank"
+                    rel="noreferrer noopener"
+                    className="inline-flex items-center gap-2 rounded-md bg-amber-400 px-3 py-2 text-sm font-semibold text-amber-950 shadow hover:bg-amber-300"
                   >
-                    <path d="M17 8h1a3 3 0 0 1 0 6h-1" />
-                    <path d="M3 8h14v6a4 4 0 0 1-4 4H7a4 4 0 0 1-4-4V8Z" />
-                    <path d="M6 2v2M10 2v2M14 2v2" />
-                  </svg>
-                  Buy me a coffee
-                </a>
+                    <svg
+                      aria-hidden="true"
+                      viewBox="0 0 24 24"
+                      className="h-4 w-4"
+                      fill="none"
+                      stroke="currentColor"
+                      strokeWidth="2"
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                    >
+                      <path d="M17 8h1a3 3 0 0 1 0 6h-1" />
+                      <path d="M3 8h14v6a4 4 0 0 1-4 4H7a4 4 0 0 1-4-4V8Z" />
+                      <path d="M6 2v2M10 2v2M14 2v2" />
+                    </svg>
+                    Buy me a coffee
+                  </a>
+                  <a
+                    href={UPI_LINK}
+                    className="inline-flex items-center gap-2 rounded-md border border-slate-300 bg-white px-3 py-2 text-sm font-semibold text-slate-700 shadow hover:bg-slate-50"
+                  >
+                    Pay via UPI
+                  </a>
+                </div>
+
+                <div className="flex items-center gap-3 rounded-md border border-slate-200 bg-slate-50 p-3">
+                  <Image
+                    src="/upi-qr.png"
+                    alt="UPI QR code to support HalalSearch"
+                    width={120}
+                    height={120}
+                    className="h-[120px] w-[120px] shrink-0 rounded bg-white p-1"
+                  />
+                  <div className="text-xs text-slate-600">
+                    <p className="font-medium text-slate-800">
+                      Scan to pay via UPI
+                    </p>
+                    <p className="mt-0.5">
+                      UPI ID:{" "}
+                      <span className="font-mono text-slate-700">{UPI_ID}</span>
+                    </p>
+                    <p className="mt-1 text-slate-400">
+                      UPI works in India — overseas, use “Buy me a coffee”.
+                    </p>
+                  </div>
+                </div>
               </section>
             </div>
           </div>

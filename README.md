@@ -134,9 +134,10 @@ GEMINI_MOCK=1
 
 - **This is an open-source, self-funded project.** Hosting (Vercel), the database
   (Turso), and any AI usage are borne by the maintainer. Support is welcome via
-  **Buy Me a Coffee: <https://buymeacoffee.com/odvprabhakk>** (also shown in the
-  in-app **ⓘ** info panel). `NEXT_PUBLIC_DONATE_URL` overrides the link and shows
-  a Donate button next to Settings; it defaults to the Buy Me a Coffee link above.
+  **Buy Me a Coffee: <https://buymeacoffee.com/odvprabhakk>** (international) or
+  **UPI** (`8500306433@ybl`, India) — both shown in the in-app **ⓘ** info panel.
+  `NEXT_PUBLIC_DONATE_URL` overrides the Buy Me a Coffee link and shows a Donate
+  button next to Settings; it defaults to the Buy Me a Coffee link above.
 - **The AI check is off by default**, so the app runs at effectively no API cost.
   When enabled, Gemini grounding is billed per executed search (5,000/month free,
   then ~$14/1,000) and auto-validate is capped (default 25); results are cached in
