@@ -205,6 +205,7 @@ lib/
 docs/
   DESIGN.md                      # design decisions + legal constraints
   DEPLOYMENT.md                  # deployment plan
+  EXTENSION.md                   # parked Chrome-extension (Google Maps overlay) plan
 ```
 
 ## Known limitations
@@ -236,6 +237,11 @@ docs/
   Donations are the near-term support path.
 - Moderation/abuse tooling and optional accounts (keep anonymous contribution).
 - Android client (reuse the same REST/SSE API routes).
+- **Chrome extension — "HalalSearch for Google Maps"** (parked): overlay halal / veg /
+  community status on the Google Maps most people already use, starting with a thin
+  "show halal near here" deep-link button and later best-effort in-page overlays.
+  A **distribution** play, not a cost saving — it still needs the same Places API and
+  backend, and doesn't cover mobile. See [`docs/EXTENSION.md`](docs/EXTENSION.md).
 
 ## Deployment
 
